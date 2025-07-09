@@ -1,0 +1,18 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /accounts/
+Disallow: /api/
+Disallow: /conversations/
+Disallow: /static/
+Disallow: /media/
+Disallow: /profile/
+Disallow: /sources/
+
+# 允許訪問的主要頁面
+Allow: /
+
+# 站點地圖（如果未來需要的話）
+# Sitemap: https://yourdomain.com/sitemap.xml
+
+# 爬蟲延遲設定（秒）
+Crawl-delay: 1 

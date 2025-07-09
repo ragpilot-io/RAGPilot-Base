@@ -1,0 +1,482 @@
+{% extends 'home.html' %}
+
+{% block source-name %}{% endblock %}
+
+{% block source-description %}
+<div class="p-3 bg-purple-50 border border-purple-200 rounded">
+    <p class="text-sm font-semibold text-purple-800 mb-2">📁 自建資料源</p>
+    <p class="text-xs text-purple-600 mb-2">
+        建立和管理您的私有資料庫，上傳文件並進行智慧對話。
+    </p>
+    <div class="flex flex-col space-y-1">
+        {% if not has_unlimited_source %}
+            <div class="text-xs text-purple-700 bg-purple-100 rounded px-2 py-1">
+                📊 已建立：{{ private_source_count }}/{{ private_source_limit }} 個資料源
+            </div>
+        {% else %}
+            <div class="text-xs text-purple-700 bg-purple-100 rounded px-2 py-1">
+                ✨ 無限制建立資料源
+            </div>
+        {% endif %}
+        
+        {% if not has_unlimited_files %}
+            <div class="text-xs text-blue-700 bg-blue-100 rounded px-2 py-1">
+                📄 此資料源：{{ current_file_count }}/{{ file_limit_per_source }} 個檔案
+            </div>
+        {% else %}
+            <div class="text-xs text-blue-700 bg-blue-100 rounded px-2 py-1">
+                ✨ 無限制上傳檔案
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block filter_section %}
+    <!-- 操作按鈕區 -->
+    <div class="flex flex-wrap gap-2 mb-4">
+        <a href="{% url 'source_list' %}" class="btn btn-ghost">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+            </svg>
+            返回列表
+        </a>
+        <a href="{% url 'source_upload' source.id %}" class="btn btn-primary">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+            </svg>
+            上傳檔案
+        </a>
+        <a href="{% url 'source_edit' source.id %}" class="btn btn-outline btn-secondary">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+            </svg>
+            編輯資料源
+        </a>
+        <a href="{% url 'source_delete' source.id %}" class="btn btn-outline btn-error">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+            刪除資料源
+        </a>
+    </div>
+{% endblock %}
+
+{% block data-table %}
+    {% csrf_token %}
+    <div class="data-table h-full overflow-y-auto pr-2">
+        <!-- 顯示訊息 -->
+        {% if messages %}
+            <div class="mb-4">
+                {% for message in messages %}
+                    <div class="alert {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-error{% else %}alert-info{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        
+        <!-- 檔案列表 -->
+        {% if files %}
+            <div class="mb-4">
+                <div class="flex items-center space-x-2 text-lg font-semibold text-gray-800 mb-3">
+                    <span class="text-purple-600">{{ source.name }}</span>
+                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                    <span>檔案列表</span>
+                    <span class="text-sm font-normal text-gray-500">({{ files|length }} 個檔案)</span>
+                </div>
+                
+                <!-- 處理狀態統計 -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-center">
+                        <div class="text-yellow-800 font-semibold text-lg">{{ status_stats.pending }}</div>
+                        <div class="text-yellow-600 text-sm">等待處理</div>
+                    </div>
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
+                        <div class="text-blue-800 font-semibold text-lg">{{ status_stats.processing }}</div>
+                        <div class="text-blue-600 text-sm">處理中</div>
+                    </div>
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
+                        <div class="text-green-800 font-semibold text-lg">{{ status_stats.completed }}</div>
+                        <div class="text-green-600 text-sm">處理完成</div>
+                    </div>
+                    <div class="bg-red-50 border border-red-200 rounded-lg p-3 text-center">
+                        <div class="text-red-800 font-semibold text-lg">{{ status_stats.failed }}</div>
+                        <div class="text-red-600 text-sm">處理失敗</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="space-y-3">
+                {% for file in files %}
+                    <div class="card shadow-sm bg-white border border-gray-200">
+                        <div class="card-body p-4">
+                            <div class="flex items-start justify-between">
+                                <div class="flex items-start space-x-3 flex-1 min-w-0">
+                                    <!-- 檔案類型圖示 -->
+                                    <div class="text-2xl flex-shrink-0">
+                                        {% if file.format == 'pdf' %}📄
+                                        {% elif file.format == 'csv' %}📈
+                                        {% elif file.format == 'json' %}📋
+                                        {% elif file.format == 'xml' %}📋
+                                        {% else %}📁
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-center space-x-2 mb-1">
+                                            <div class="font-semibold text-gray-800 truncate" title="{{ file.filename }}">
+                                                <span class="truncated-filename">{{ file.filename }}</span>
+                                            </div>
+                                            <!-- 處理狀態標籤 -->
+                                            {% if file.status == 'pending' %}
+                                                <span class="inline-flex items-center px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
+                                                    等待處理
+                                                </span>
+                                            {% elif file.status == 'processing' %}
+                                                <span class="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                                                    處理中
+                                                </span>
+                                            {% elif file.status == 'completed' %}
+                                                <span class="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                                                    處理完成
+                                                </span>
+                                            {% elif file.status == 'failed' %}
+                                                <span class="inline-flex items-center px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
+                                                    處理失敗
+                                                </span>
+                                            {% endif %}
+                                        </div>
+                                        
+                                        <div class="text-sm text-gray-500 space-y-1">
+                                            <div>檔案大小：{{ file.size }} MB</div>
+                                            <div>格式：{{ file.get_format_display }}</div>
+                                            <div>上傳時間：{{ file.created_at|date:"Y-m-d H:i" }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex flex-col space-y-2 flex-shrink-0 ml-3">
+                                    <button class="btn btn-sm btn-outline btn-info" onclick="previewFile({{ file.id }})">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                        </svg>
+                                        預覽
+                                    </button>
+                                    <a href="{% url 'file_download' file.id %}" class="btn btn-sm btn-outline btn-success">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                        </svg>
+                                        下載
+                                    </a>
+                                    <button class="btn btn-sm btn-outline btn-error delete-file-btn" data-file-id="{{ file.id }}" data-filename="{{ file.filename }}">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                        </svg>
+                                        刪除
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-12">
+                <div class="text-6xl text-gray-300 mb-4">📁</div>
+                <div class="text-gray-500 text-lg font-medium mb-2">還沒有上傳任何檔案</div>
+                <div class="text-gray-400 text-sm mb-6">
+                    點擊上方「上傳檔案」按鈕開始上傳您的第一個檔案
+                </div>
+                <a href="{% url 'source_upload' source.id %}" class="btn btn-primary">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                    </svg>
+                    上傳檔案
+                </a>
+            </div>
+        {% endif %}
+        
+        <!-- 檔案預覽模態框 -->
+        <div id="file-preview-modal" class="modal hidden">
+            <div class="modal-box w-11/12 max-w-5xl max-h-screen">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-lg" id="preview-title">檔案預覽</h3>
+                    <button class="btn btn-sm btn-circle btn-ghost" onclick="closePreviewModal()">✕</button>
+                </div>
+                
+                <!-- 預覽內容區域 -->
+                <div id="preview-content" class="overflow-auto max-h-96">
+                    <div class="text-center py-8">
+                        <div class="loading loading-spinner loading-lg"></div>
+                        <p class="mt-2 text-gray-500">載入中...</p>
+                    </div>
+                </div>
+                
+                <!-- 檔案資訊 -->
+                <div id="preview-info" class="mt-4 p-3 bg-gray-50 rounded text-sm text-gray-600">
+                    <!-- 檔案資訊將由 JavaScript 填入 -->
+                </div>
+                
+                <div class="modal-action">
+                    <button class="btn" onclick="closePreviewModal()">關閉</button>
+                </div>
+            </div>
+            <div class="modal-backdrop" onclick="closePreviewModal()"></div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+    // 截斷檔案名稱函數
+    function truncateFilename(filename, maxLength = 15) {
+        if (filename.length <= maxLength) {
+            return filename;
+        }
+        
+        // 找到最後一個點的位置（副檔名）
+        const lastDotIndex = filename.lastIndexOf('.');
+        if (lastDotIndex === -1) {
+            // 沒有副檔名，直接截斷
+            return filename.substring(0, maxLength - 3) + '...';
+        }
+        
+        const extension = filename.substring(lastDotIndex);
+        const nameWithoutExt = filename.substring(0, lastDotIndex);
+        
+        // 計算可用於檔案名稱的字符數（減去 "..." 和副檔名的長度）
+        const availableLength = maxLength - 3 - extension.length;
+        
+        if (availableLength <= 0) {
+            // 如果副檔名太長，只顯示 "..." + 副檔名
+            return '...' + extension;
+        }
+        
+        return nameWithoutExt.substring(0, availableLength) + '...' + extension;
+    }
+    
+    // 當頁面載入完成時，處理檔案名稱截斷和刪除按鈕事件監聽器
+    document.addEventListener('DOMContentLoaded', function() {
+        // 處理檔案名稱截斷
+        const filenameElements = document.querySelectorAll('.truncated-filename');
+        filenameElements.forEach(element => {
+            const originalFilename = element.textContent;
+            const truncatedFilename = truncateFilename(originalFilename);
+            element.textContent = truncatedFilename;
+        });
+        
+        // 為刪除按鈕添加事件監聽器
+        const deleteButtons = document.querySelectorAll('.delete-file-btn');
+        deleteButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const fileId = this.getAttribute('data-file-id');
+                const filename = this.getAttribute('data-filename');
+                deleteFile(fileId, filename);
+            });
+        });
+    });
+</script>
+<script>
+    // 預覽檔案
+    function previewFile(fileId) {
+        // 顯示模態框
+        const modal = document.getElementById('file-preview-modal');
+        modal.classList.remove('hidden');
+        modal.classList.add('modal-open');
+        
+        // 重置內容
+        document.getElementById('preview-content').innerHTML = `
+            <div class="text-center py-8">
+                <div class="loading loading-spinner loading-lg"></div>
+                <p class="mt-2 text-gray-500">載入中...</p>
+            </div>
+        `;
+        
+        // 發送預覽請求
+        fetch(`/sources/file/${fileId}/preview/`, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayPreview(data);
+            } else {
+                showPreviewError(data.error || '預覽失敗');
+            }
+        })
+        .catch(error => {
+            console.error('預覽錯誤:', error);
+            showPreviewError('網路錯誤，請稍後再試');
+        });
+    }
+    
+    // 顯示預覽內容
+    function displayPreview(data) {
+        const contentDiv = document.getElementById('preview-content');
+        const titleElement = document.getElementById('preview-title');
+        const infoDiv = document.getElementById('preview-info');
+        
+        // 設定標題
+        titleElement.textContent = `檔案預覽 - ${data.filename}`;
+        
+        // 準備檔案資訊HTML
+        let infoHtml = `
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                <div><strong>檔案名稱：</strong>${data.filename}</div>
+                <div><strong>檔案大小：</strong>${data.size}</div>
+                <div><strong>檔案類型：</strong>${data.file_type.toUpperCase()}</div>
+        `;
+        
+        // 如果有狀態信息，添加狀態
+        if (data.status) {
+            let statusColor = 'text-gray-600';
+            if (data.status.includes('完成')) statusColor = 'text-green-600';
+            else if (data.status.includes('失敗')) statusColor = 'text-red-600';
+            else if (data.status.includes('處理中')) statusColor = 'text-blue-600';
+            else if (data.status.includes('等待')) statusColor = 'text-yellow-600';
+            
+            infoHtml += `<div><strong>處理狀態：</strong><span class="${statusColor}">${data.status}</span></div>`;
+        }
+        
+        infoHtml += '</div>';
+        
+        // 如果有摘要，添加摘要區域
+        if (data.summary && data.summary !== '暫無摘要') {
+            infoHtml += `
+                <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
+                    <div class="font-semibold text-blue-800 mb-2">📋 檔案摘要：</div>
+                    <div class="text-blue-700 text-sm whitespace-pre-wrap">${escapeHtml(data.summary)}</div>
+                </div>
+            `;
+        }
+        
+        // 如果有失敗原因，添加失敗原因區域
+        if (data.failed_reason) {
+            infoHtml += `
+                <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded">
+                    <div class="font-semibold text-red-800 mb-2">❌ 處理失敗原因：</div>
+                    <div class="text-red-700 text-sm whitespace-pre-wrap">${escapeHtml(data.failed_reason)}</div>
+                </div>
+            `;
+        }
+        
+        // 設定檔案資訊
+        infoDiv.innerHTML = infoHtml;
+        
+        // 根據預覽類型顯示內容
+        if (data.preview_type === 'error') {
+            // 處理失敗的檔案
+            contentDiv.innerHTML = `
+                <div class="text-center py-8">
+                    <div class="text-6xl text-red-300 mb-4">❌</div>
+                    <div class="text-red-600 font-medium mb-2">檔案處理失敗</div>
+                    <div class="text-gray-600">${data.message}</div>
+                </div>
+            `;
+        } else if (data.preview_type === 'table') {
+            // 表格預覽（CSV/JSON/XML 轉換後的資料）
+            contentDiv.innerHTML = `
+                <div class="mb-3">
+                    <div class="text-sm text-gray-600 bg-green-50 border border-green-200 rounded p-2">
+                        <span class="text-green-700 font-medium">✅ 已轉換為結構化資料</span> - ${data.message}
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    ${data.content}
+                </div>
+            `;
+        } else if (data.preview_type === 'code') {
+            // 代碼預覽（原始 JSON/XML 檔案內容）
+            contentDiv.innerHTML = `
+                <div class="mb-3">
+                    <div class="text-sm text-gray-600 bg-yellow-50 border border-yellow-200 rounded p-2">
+                        <span class="text-yellow-700 font-medium">📄 原始檔案內容</span> - ${data.message}
+                    </div>
+                </div>
+                <pre class="bg-gray-100 p-4 rounded overflow-auto text-sm"><code class="language-${data.language}">${escapeHtml(data.content)}</code></pre>
+            `;
+        } else if (data.preview_type === 'info') {
+            // PDF 資訊預覽
+            contentDiv.innerHTML = `
+                <div class="text-center py-8">
+                    <div class="text-6xl mb-4">📄</div>
+                    <pre class="text-left bg-gray-100 p-4 rounded">${escapeHtml(data.content)}</pre>
+                </div>
+            `;
+        } else {
+            // 預設文字預覽
+            contentDiv.innerHTML = `
+                <pre class="bg-gray-100 p-4 rounded overflow-auto text-sm">${escapeHtml(data.content)}</pre>
+            `;
+        }
+    }
+    
+    // 顯示預覽錯誤
+    function showPreviewError(errorMessage) {
+        const contentDiv = document.getElementById('preview-content');
+        contentDiv.innerHTML = `
+            <div class="text-center py-8">
+                <div class="text-6xl text-red-300 mb-4">❌</div>
+                <div class="text-red-600 font-medium mb-2">預覽失敗</div>
+                <div class="text-gray-600">${errorMessage}</div>
+            </div>
+        `;
+    }
+    
+    // 關閉預覽模態框
+    function closePreviewModal() {
+        const modal = document.getElementById('file-preview-modal');
+        modal.classList.add('hidden');
+        modal.classList.remove('modal-open');
+    }
+    
+    // HTML 轉義函數
+    function escapeHtml(text) {
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+    }
+    
+    // 刪除檔案
+    function deleteFile(fileId, filename) {
+        if (confirm(`確定要刪除檔案「${filename}」嗎？\n\n⚠️ 此操作將永久刪除檔案，無法恢復！`)) {
+            // 獲取 CSRF token
+            const csrfTokenElement = document.querySelector('[name=csrfmiddlewaretoken]');
+            if (!csrfTokenElement) {
+                alert('系統錯誤：找不到安全令牌，請重新整理頁面後再試');
+                return;
+            }
+            
+            // 創建表單並提交
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/sources/file/${fileId}/delete/`;
+            form.style.display = 'none';
+            
+            // 添加 CSRF token
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrfmiddlewaretoken';
+            csrfInput.value = csrfTokenElement.value;
+            form.appendChild(csrfInput);
+            
+            // 提交表單
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+</script>
+{% endblock %} 

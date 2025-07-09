@@ -1,0 +1,161 @@
+{% extends 'home.html' %}
+
+{% block source-name %}{% endblock %}
+
+{% block source-description %}
+<div class="p-3 bg-orange-50 border border-orange-200 rounded">
+    <p class="text-sm font-semibold text-orange-800 mb-2">✏️ 編輯資料源</p>
+    <p class="text-xs text-orange-600 mb-2">
+        修改資料源的名稱和描述資訊。
+    </p>
+    <div class="flex flex-col space-y-1">
+        {% if not has_unlimited_source %}
+            <div class="text-xs text-orange-700 bg-orange-100 rounded px-2 py-1">
+                📊 已建立：{{ private_source_count }}/{{ private_source_limit }} 個資料源
+            </div>
+        {% else %}
+            <div class="text-xs text-orange-700 bg-orange-100 rounded px-2 py-1">
+                ✨ 無限制建立資料源
+            </div>
+        {% endif %}
+        
+        {% if not has_unlimited_files %}
+            <div class="text-xs text-blue-700 bg-blue-100 rounded px-2 py-1">
+                📄 此資料源：{{ current_file_count }}/{{ file_limit_per_source }} 個檔案
+            </div>
+        {% else %}
+            <div class="text-xs text-blue-700 bg-blue-100 rounded px-2 py-1">
+                ✨ 無限制上傳檔案
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block filter_section %}
+    <!-- 導航按鈕 -->
+    <div class="flex flex-wrap gap-2 mb-4">
+        <a href="{% url 'source_list' %}" class="btn btn-ghost">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+            </svg>
+            返回列表
+        </a>
+        <a href="{% url 'source_detail' source.id %}" class="btn btn-ghost">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            查看詳情
+        </a>
+    </div>
+{% endblock %}
+
+{% block data-table %}
+    <div class="data-table h-full overflow-y-auto pr-2">
+        <!-- 顯示訊息 -->
+        {% if messages %}
+            <div class="mb-4 space-y-2">
+                {% for message in messages %}
+                    <div class="alert {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-error{% else %}alert-info{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        
+        <!-- 編輯表單 -->
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title text-2xl font-bold text-gray-800 mb-6">
+                    <svg class="w-6 h-6 mr-2 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                    </svg>
+                    編輯資料源「{{ source.name }}」
+                </h2>
+                
+                <form method="post" class="space-y-6">
+                    {% csrf_token %}
+                    
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text text-lg font-semibold">資料源名稱 <span class="text-red-500">*</span></span>
+                        </label>
+                        <input type="text" name="name" value="{{ source.name }}" placeholder="例如：產品銷售報告" 
+                               class="input input-bordered input-lg" required maxlength="255">
+                        <label class="label">
+                            <span class="label-text-alt text-gray-500">輸入一個清楚明確的資料源名稱，不能與現有資料源重複</span>
+                        </label>
+                    </div>
+                    
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text text-lg font-semibold">資料源描述 <span class="text-red-500">*</span></span>
+                        </label>
+                        <textarea name="description" placeholder="例如：包含2024年第一季度所有產品的銷售數據和分析報告，用於業務分析和決策支援..." 
+                                  class="textarea textarea-bordered textarea-lg h-32" required>{{ source.description }}</textarea>
+                        <label class="label">
+                            <span class="label-text-alt text-gray-500">詳細描述這個資料源的內容和用途，有助於後續的檔案管理和AI分析</span>
+                        </label>
+                    </div>
+                    
+                    <!-- 編輯提示 -->
+                    <div class="alert alert-info">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <div>
+                            <h4 class="font-bold">編輯說明：</h4>
+                            <ul class="text-sm mt-2 space-y-1">
+                                <li>• 修改資料源名稱和描述不會影響已上傳的檔案</li>
+                                <li>• 更新後的資訊將立即在系統中生效</li>
+                                <li>• 資料源名稱必須在您的帳戶中是唯一的</li>
+                                <li>• 建議使用具有描述性的名稱，便於日後管理</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="card-actions justify-end">
+                        <a href="{% url 'source_detail' source.id %}" class="btn btn-ghost">取消</a>
+                        <button type="submit" class="btn btn-primary">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            儲存變更
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 表單驗證
+        const form = document.querySelector('form');
+        const nameInput = document.querySelector('input[name="name"]');
+        const descriptionInput = document.querySelector('textarea[name="description"]');
+        
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                const name = nameInput.value.trim();
+                const description = descriptionInput.value.trim();
+                
+                if (!name || !description) {
+                    e.preventDefault();
+                    alert('請填寫所有必要欄位');
+                    return false;
+                }
+                
+                if (name.length > 255) {
+                    e.preventDefault();
+                    alert('資料源名稱不能超過255個字元');
+                    return false;
+                }
+            });
+        }
+    });
+</script>
+{% endblock %} 

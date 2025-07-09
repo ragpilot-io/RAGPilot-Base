@@ -1,0 +1,118 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-TW" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>數據領航員 RAGPilot</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}?v=2">
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'favicon.ico' %}?v=2">
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="{% static 'apple-touch-icon.png' %}">
+    <link rel="apple-touch-icon-precomposed" href="{% static 'apple-touch-icon-precomposed.png' %}">
+    
+    <!-- Meta tags -->
+    <meta name="msapplication-TileImage" content="{% static 'favicon.ico' %}?v=2">
+    <meta name="theme-color" content="#ffffff">
+    
+    <!-- Tailwind CSS with DaisyUI (CDN 版本) -->
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 額外的 CSS -->
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="{% block body_class %}min-h-screen bg-gray-50 flex flex-col{% endblock %}">
+    
+    <!-- 主要內容區域 -->
+    {% block content %}{% endblock %}
+    
+    <!-- 底部連結區域 - 可選擇性顯示 -->
+    {% block footer %}{% endblock %}
+    
+    <!-- 使用條款彈出視窗 -->
+    {% include '_terms_modal.html' %}
+    
+    <!-- 顯示 Django messages -->
+    {% if messages %}
+        <div id="django-messages" class="fixed top-4 right-4 z-50 space-y-2">
+            {% for message in messages %}
+                <div class="alert 
+                    {% if message.tags == 'error' %}alert-error{% endif %}
+                    {% if message.tags == 'warning' %}alert-warning{% endif %}
+                    {% if message.tags == 'success' %}alert-success{% endif %}
+                    {% if message.tags == 'info' %}alert-info{% endif %}
+                    shadow-lg" 
+                    data-message="{{ message|escapejs }}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+        
+        <script>
+            // 過濾登入成功訊息
+            document.addEventListener('DOMContentLoaded', function() {
+                const messageElements = document.querySelectorAll('#django-messages .alert');
+                const loginKeywords = ['登入成功', 'logged in', 'successfully signed in', 'nickchen'];
+                
+                messageElements.forEach(function(element) {
+                    const messageText = element.textContent || element.innerText;
+                    const shouldHide = loginKeywords.some(keyword => 
+                        messageText.toLowerCase().includes(keyword.toLowerCase())
+                    );
+                    
+                    if (shouldHide) {
+                        element.style.display = 'none';
+                    }
+                });
+            });
+        </script>
+    {% endif %}
+    
+    <!-- 基礎 JavaScript -->
+    <script>
+        // 通用的表單提交載入狀態
+        function setupFormLoadingStates() {
+            document.querySelectorAll('form').forEach(form => {
+                // 跳過使用 AJAX 的過濾器表單
+                if (form.id === 'filter-form') {
+                    return;
+                }
+                
+                form.addEventListener('submit', function(e) {
+                    const submitBtn = this.querySelector('button[type="submit"]');
+                    if (submitBtn) {
+                        submitBtn.classList.add('loading');
+                        submitBtn.disabled = true;
+                    }
+                });
+            });
+        }
+
+        // 通用的提示訊息自動隱藏
+        function setupAutoHideAlerts() {
+            setTimeout(() => {
+                const successAlerts = document.querySelectorAll('.alert-success');
+                successAlerts.forEach(alert => {
+                    alert.style.transition = 'opacity 0.5s';
+                    alert.style.opacity = '0';
+                    setTimeout(() => alert.remove(), 500);
+                });
+            }, 3000);
+        }
+
+        // 頁面載入完成後執行通用初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            setupFormLoadingStates();
+            setupAutoHideAlerts();
+        });
+    </script>
+    
+    <!-- 頁面特定的 JavaScript -->
+    {% block extra_js %}{% endblock %}
+</body>
+</html> 

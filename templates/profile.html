@@ -1,0 +1,954 @@
+{% extends "base.html" %}
+
+{% block body_class %}min-h-screen bg-gray-50{% endblock %}
+
+{% block content %}
+<!-- 導航欄 -->
+<nav class="bg-white shadow-sm border-b">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16">
+            <div class="flex items-center">
+                <a href="{% url 'home' %}" class="flex items-center space-x-2 text-gray-900 hover:text-blue-600 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                    </svg>
+                    <span class="font-medium">返回主頁</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<div class="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8 mt-8">
+
+    <!-- 訊息提示 -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-error{% else %}alert-info{% endif %} mb-6">
+                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                    {% if message.tags == 'success' %}
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    {% elif message.tags == 'error' %}
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    {% else %}
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    {% endif %}
+                </svg>
+                <span>{{ message }}</span>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- 左側：個人資料摘要 -->
+        <div class="lg:col-span-1">
+            <div class="card bg-base-100 shadow">
+                <div class="card-body text-center">
+                    <div class="w-20 h-20 bg-gray-500 rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">
+                        {{ user.username|first|upper }}
+                    </div>
+                    <h2 class="card-title justify-center">
+                        <span class="truncate max-w-full">
+                            {% if user.first_name and user.last_name %}
+                                {{ user.first_name }} {{ user.last_name }}
+                            {% else %}
+                                {{ user.username }}
+                            {% endif %}
+                        </span>
+                    </h2>
+                    <p class="text-gray-500">{{ user.email }}</p>
+                    <div class="divider"></div>
+                    <div class="text-sm text-gray-600 space-y-1">
+                        <p><span class="font-medium">帳戶創建：</span>{{ user.date_joined|date:"Y年m月d日" }}</p>
+                        <p><span class="font-medium">最後登入：</span>{{ user.last_login|date:"Y年m月d日 H:i" }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 標籤導航 -->
+            <div class="mt-6 space-y-4">
+                <button class="btn btn-outline w-full border-2 tab tab-active flex items-center justify-start" data-tab="profile">
+                    <span class="flex items-center">👤 個人資料</span>
+                </button>
+                <button class="btn btn-outline w-full border-2 tab flex items-center justify-start" data-tab="password">
+                                            <span class="flex items-center">🔒 密碼管理</span>
+                </button>
+                <button class="btn btn-outline w-full border-2 tab flex items-center justify-start" data-tab="social">
+                    <span class="flex items-center">🔗 第三方登入</span>
+                </button>
+                <button class="btn btn-outline w-full border-2 tab flex items-center justify-start" data-tab="plan">
+                    <span class="flex items-center">📊 使用方案</span>
+                </button>
+                <button class="btn btn-outline w-full border-2 tab flex items-center justify-start" data-tab="terms">
+                    <span class="flex items-center">📋 使用條款</span>
+                </button>
+                <button class="btn btn-outline w-full border-2 tab flex items-center justify-start" data-tab="danger">
+                    <span class="flex items-center">⚠️ 危險區域</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 右側：編輯表單 -->
+        <div class="lg:col-span-2 space-y-8">
+            <!-- 固定高度的內容容器 -->
+            <div class="h-[800px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 pr-2">
+            <!-- 個人資料編輯 -->
+            <div id="profile-content" class="tab-content" style="display: block;">
+                <div class="card bg-base-100 shadow">
+                    <div class="card-body">
+                        <h3 class="card-title text-xl flex items-center">
+                            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                            </svg>
+                            個人資料
+                        </h3>
+                        <form method="post" class="space-y-6 mt-6">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="update_profile">
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="form-control">
+                                    <label class="label">
+                                        <span class="label-text font-medium">{{ profile_form.username.label }}</span>
+                                    </label>
+                                    {{ profile_form.username }}
+                                    <label class="label">
+                                        <span class="label-text-alt text-gray-500">
+                                            {% if profile_form.username.help_text %}
+                                                {{ profile_form.username.help_text }}
+                                            {% else %}
+                                                使用者名稱不可更改，以確保系統穩定性
+                                            {% endif %}
+                                        </span>
+                                    </label>
+                                    {% if profile_form.username.errors %}
+                                        <label class="label">
+                                            <span class="label-text-alt text-error">
+                                                {% for error in profile_form.username.errors %}{{ error }}{% endfor %}
+                                            </span>
+                                        </label>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="form-control">
+                                    <label class="label">
+                                        <span class="label-text font-medium">{{ profile_form.email.label }}</span>
+                                    </label>
+                                    {{ profile_form.email }}
+                                    {% if profile_form.email.errors %}
+                                        <label class="label">
+                                            <span class="label-text-alt text-error">
+                                                {% for error in profile_form.email.errors %}{{ error }}{% endfor %}
+                                            </span>
+                                        </label>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="form-control">
+                                    <label class="label">
+                                        <span class="label-text font-medium">{{ profile_form.first_name.label }}</span>
+                                    </label>
+                                    {{ profile_form.first_name }}
+                                    {% if profile_form.first_name.errors %}
+                                        <label class="label">
+                                            <span class="label-text-alt text-error">
+                                                {% for error in profile_form.first_name.errors %}{{ error }}{% endfor %}
+                                            </span>
+                                        </label>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="form-control">
+                                    <label class="label">
+                                        <span class="label-text font-medium">{{ profile_form.last_name.label }}</span>
+                                    </label>
+                                    {{ profile_form.last_name }}
+                                    {% if profile_form.last_name.errors %}
+                                        <label class="label">
+                                            <span class="label-text-alt text-error">
+                                                {% for error in profile_form.last_name.errors %}{{ error }}{% endfor %}
+                                            </span>
+                                        </label>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="card-actions justify-end">
+                                <button type="submit" class="btn btn-primary">
+                                    💾 儲存
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 密碼管理 -->
+            <div id="password-content" class="tab-content" style="display: none;">
+                <div class="card bg-base-100 shadow">
+                    <div class="card-body">
+                        {% if password_form_type == 'set' %}
+                            <!-- 設定密碼（適用於 Google 登入用戶） -->
+                            <h3 class="card-title text-xl flex items-center">
+                                <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                                </svg>
+                                設定登入密碼
+                            </h3>
+                            
+                            <!-- 說明提示 -->
+                            <div class="alert alert-info mb-6 mt-6">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <div>
+                                    <h4 class="font-bold">密碼設定說明</h4>
+                                    <p class="text-sm">您目前是通過 Google 登入註冊的用戶。設定密碼後，您也可以使用 <strong>{{ user.username }}</strong> + 密碼的方式登入。</p>
+                                </div>
+                            </div>
+
+                            <form method="post" class="space-y-6">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="set_password">
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div class="form-control">
+                                        <label class="label">
+                                            <span class="label-text font-medium">{{ password_form.new_password1.label }}</span>
+                                        </label>
+                                        {{ password_form.new_password1 }}
+                                        {% if password_form.new_password1.help_text %}
+                                            <label class="label">
+                                                <span class="label-text-alt text-gray-500">{{ password_form.new_password1.help_text }}</span>
+                                            </label>
+                                        {% endif %}
+                                        {% if password_form.new_password1.errors %}
+                                            <label class="label">
+                                                <span class="label-text-alt text-error">
+                                                    {% for error in password_form.new_password1.errors %}{{ error }}{% endfor %}
+                                                </span>
+                                            </label>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <div class="form-control">
+                                        <label class="label">
+                                            <span class="label-text font-medium">{{ password_form.new_password2.label }}</span>
+                                        </label>
+                                        {{ password_form.new_password2 }}
+                                        {% if password_form.new_password2.errors %}
+                                            <label class="label">
+                                                <span class="label-text-alt text-error">
+                                                    {% for error in password_form.new_password2.errors %}{{ error }}{% endfor %}
+                                                </span>
+                                            </label>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                        {% else %}
+                            <!-- 修改密碼（適用於已有密碼的用戶） -->
+                            <h3 class="card-title text-xl flex items-center">
+                                <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                                </svg>
+                                修改密碼
+                            </h3>
+                            
+                            <form method="post" class="space-y-6 mt-6">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="change_password">
+                                
+                                <div class="form-control">
+                                    <label class="label">
+                                        <span class="label-text font-medium">{{ password_form.old_password.label }}</span>
+                                    </label>
+                                    {{ password_form.old_password }}
+                                    {% if password_form.old_password.errors %}
+                                        <label class="label">
+                                            <span class="label-text-alt text-error">
+                                                {% for error in password_form.old_password.errors %}{{ error }}{% endfor %}
+                                            </span>
+                                        </label>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div class="form-control">
+                                        <label class="label">
+                                            <span class="label-text font-medium">{{ password_form.new_password1.label }}</span>
+                                        </label>
+                                        {{ password_form.new_password1 }}
+                                        {% if password_form.new_password1.errors %}
+                                            <label class="label">
+                                                <span class="label-text-alt text-error">
+                                                    {% for error in password_form.new_password1.errors %}{{ error }}{% endfor %}
+                                                </span>
+                                            </label>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <div class="form-control">
+                                        <label class="label">
+                                            <span class="label-text font-medium">{{ password_form.new_password2.label }}</span>
+                                        </label>
+                                        {{ password_form.new_password2 }}
+                                        {% if password_form.new_password2.errors %}
+                                            <label class="label">
+                                                <span class="label-text-alt text-error">
+                                                    {% for error in password_form.new_password2.errors %}{{ error }}{% endfor %}
+                                                </span>
+                                            </label>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                        {% endif %}
+                        
+                        {% if password_form.non_field_errors %}
+                            <div class="alert alert-error">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <div>
+                                    {% for error in password_form.non_field_errors %}
+                                        <div>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endif %}
+                        
+                        <div class="card-actions justify-end">
+                            <button type="submit" class="btn btn-primary">
+                                {% if password_form_type == 'set' %}
+                                    🔑 設定密碼
+                                {% else %}
+                                    💾 儲存修改
+                                {% endif %}
+                            </button>
+                        </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 第三方登入管理 -->
+            <div id="social-content" class="tab-content" style="display: none;">
+                <div class="card bg-base-100 shadow">
+                    <div class="card-body">
+                        <h3 class="card-title text-xl flex items-center">
+                            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                            </svg>
+                            第三方登入管理
+                        </h3>
+                        
+                        {% if google_oauth_enabled %}
+                            <!-- Google OAuth 可用時的正常功能 -->
+                            <div class="space-y-6 mt-6">
+                                
+                                <!-- Google 連結狀態 -->
+                                {% load socialaccount %}
+                                {% get_social_accounts user as accounts %}
+                                
+                                <div class="border rounded-lg p-4">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-3">
+                                            <svg class="w-8 h-8" viewBox="0 0 24 24">
+                                                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                                                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                                                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                                                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                                            </svg>
+                                            <div>
+                                                <h4 class="font-semibold">Google</h4>
+                                                {% for account in accounts.google %}
+                                                    <p class="text-sm text-gray-600">已連結：{{ account.extra_data.email }}</p>
+                                                {% empty %}
+                                                    <p class="text-sm text-gray-600">尚未連結</p>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                        
+                                        <div>
+                                            {% for account in accounts.google %}
+                                                <!-- 已連結，顯示取消連結按鈕 -->
+                                                <form method="post" action="{% url 'socialaccount_connections' %}" class="inline" 
+                                                      onsubmit="return confirm('確定要取消連結 Google 帳戶嗎？')">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="account" value="{{ account.id }}">
+                                                    <button type="submit" name="action_remove" class="btn btn-error btn-sm">
+                                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                                        </svg>
+                                                        取消連結
+                                                    </button>
+                                                </form>
+                                            {% empty %}
+                                                <!-- 未連結，顯示連結按鈕 -->
+                                                <a href="{% provider_login_url 'google' process='connect' %}" class="btn btn-primary btn-sm">
+                                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                                                    </svg>
+                                                    連結 Google
+                                                </a>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="alert alert-info">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    <div>
+                                        <h4 class="font-bold">第三方登入說明</h4>
+                                        <p class="text-sm">連結第三方帳戶後，您可以使用多種方式登入系統。取消連結不會影響您的現有資料。</p>
+                                    </div>
+                                </div>
+                            </div>
+                        {% else %}
+                            <!-- Google OAuth 不可用時的提示 -->
+                            <div class="space-y-6 mt-6">
+                                <div class="alert alert-warning">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                                    </svg>
+                                    <div>
+                                        <h4 class="font-bold">第三方登入功能暫不可用</h4>
+                                        <p class="text-sm">系統管理員尚未設定 Google OAuth 環境變數，因此無法啟用第三方登入功能。</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="border rounded-lg p-4 bg-gray-50">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-3">
+                                            <svg class="w-8 h-8 opacity-50" viewBox="0 0 24 24">
+                                                <path fill="#9CA3AF" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                                                <path fill="#9CA3AF" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                                                <path fill="#9CA3AF" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                                                <path fill="#9CA3AF" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                                            </svg>
+                                            <div>
+                                                <h4 class="font-semibold text-gray-600">Google</h4>
+                                                <p class="text-sm text-gray-500">需要設定環境變數才能啟用</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div>
+                                            <button class="btn btn-sm btn-disabled" disabled>
+                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728"/>
+                                                </svg>
+                                                暫不可用
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- 使用方案 -->
+            <div id="plan-content" class="tab-content" style="display: none;">
+                <div class="card bg-base-100 shadow">
+                    <div class="card-body">
+                        <h3 class="card-title text-xl flex items-center justify-between">
+                            <div class="flex items-center">
+                                <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                使用方案
+                            </div>
+                            <button id="plan-help-btn" class="btn btn-circle btn-sm btn-ghost" title="查看所有方案說明">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </button>
+                        </h3>
+                        
+                        <div class="space-y-6 mt-6">
+                            
+                            <!-- 方案資訊 -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <!-- 每月聊天次數 -->
+                                <div class="card bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200">
+                                    <div class="card-body p-4">
+                                        <div class="flex items-center justify-between">
+                                            <div>
+                                                <h4 class="font-semibold text-blue-800">每月聊天次數</h4>
+                                                <p class="text-sm text-blue-600">本月使用量</p>
+                                            </div>
+                                            <div class="text-right">
+                                                <div class="text-2xl font-bold text-blue-800">
+                                                    {{ monthly_chat_count|default:0 }}
+                                                </div>
+                                                <div class="text-sm text-blue-600">
+                                                    {% if has_unlimited_chat %}
+                                                        / ∞ (無限制)
+                                                    {% else %}
+                                                        / {{ user_limit.chat_limit_per_month }}
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mt-3">
+                                            {% if has_unlimited_chat %}
+                                                <div class="flex justify-between text-xs text-blue-600 mb-1">
+                                                    <span>方案狀態</span>
+                                                    <span class="text-green-600 font-semibold">✨ 無限制</span>
+                                                </div>
+                                                <progress class="progress progress-success w-full" value="100" max="100"></progress>
+                                            {% else %}
+                                                <div class="flex justify-between text-xs text-blue-600 mb-1">
+                                                    <span>使用進度</span>
+                                                    <span>{{ chat_usage_percentage|floatformat:1 }}%</span>
+                                                </div>
+                                                <progress class="progress progress-primary w-full" 
+                                                         value="{{ monthly_chat_count|default:0 }}" 
+                                                         max="{{ user_limit.chat_limit_per_month }}"></progress>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 私有資料源數量 -->
+                                <div class="card bg-gradient-to-br from-green-50 to-green-100 border border-green-200">
+                                    <div class="card-body p-4">
+                                        <div class="flex items-center justify-between">
+                                            <div>
+                                                <h4 class="font-semibold text-green-800">私有資料源</h4>
+                                                <p class="text-sm text-green-600">已建立數量</p>
+                                            </div>
+                                            <div class="text-right">
+                                                <div class="text-2xl font-bold text-green-800">
+                                                    {{ private_source_count|default:0 }}
+                                                </div>
+                                                <div class="text-sm text-green-600">
+                                                    {% if has_unlimited_source %}
+                                                        / ∞ (無限制)
+                                                    {% else %}
+                                                        / {{ user_limit.private_source_limit }}
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mt-3">
+                                            {% if has_unlimited_source %}
+                                                <div class="flex justify-between text-xs text-green-600 mb-1">
+                                                    <span>方案狀態</span>
+                                                    <span class="text-green-600 font-semibold">✨ 無限制</span>
+                                                </div>
+                                                <progress class="progress progress-success w-full" value="100" max="100"></progress>
+                                            {% else %}
+                                                <div class="flex justify-between text-xs text-green-600 mb-1">
+                                                    <span>使用進度</span>
+                                                    <span>{{ source_usage_percentage|floatformat:1 }}%</span>
+                                                </div>
+                                                <progress class="progress progress-success w-full" 
+                                                         value="{{ private_source_count|default:0 }}" 
+                                                         max="{{ user_limit.private_source_limit }}"></progress>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                            </div>
+                            
+                            <!-- 方案詳情 -->
+                            <div class="card bg-base-200">
+                                <div class="card-body">
+                                    <h4 class="card-title text-lg">方案詳情</h4>
+                                    <div class="overflow-x-auto">
+                                        <table class="table table-zebra w-full">
+                                            <thead>
+                                                <tr>
+                                                    <th>項目</th>
+                                                    <th>限制</th>
+                                                    <th>說明</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td class="font-medium">每月聊天次數</td>
+                                                    <td>
+                                                        {% if has_unlimited_chat %}
+                                                            <span class="badge badge-success">∞</span>
+                                                        {% else %}
+                                                            <span class="badge badge-primary">{{ user_limit.chat_limit_per_month }}</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td class="text-sm text-gray-600">每月可進行的對話次數，每月初重置</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="font-medium">私有資料源數量</td>
+                                                    <td>
+                                                        {% if has_unlimited_source %}
+                                                            <span class="badge badge-success">∞</span>
+                                                        {% else %}
+                                                            <span class="badge badge-success">{{ user_limit.private_source_limit }}</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td class="text-sm text-gray-600">可建立的私有知識庫數量</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="font-medium">每個資料源檔案數</td>
+                                                    <td>
+                                                        {% if has_unlimited_files %}
+                                                            <span class="badge badge-success">∞</span>
+                                                        {% else %}
+                                                            <span class="badge badge-secondary">{{ user_limit.file_limit_per_source }}</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td class="text-sm text-gray-600">單一資料源最多可上傳的檔案數量</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 使用提示 -->
+                            <div class="alert alert-info">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <div>
+                                    <h4 class="font-bold">使用提示</h4>
+                                    <ul class="text-sm mt-2 space-y-1">
+                                        <li>• 聊天次數會在每月初 (UTC+8) 重置</li>
+                                        <li>• 私有資料源建立後可隨時刪除以釋放額度</li>
+                                        <li>• 如需提升使用額度，請參考上方說明或聯繫管理員</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 使用條款內容 -->
+            <div id="terms-tab-content" class="tab-content" style="display: none;">
+                <div class="card bg-base-100 shadow h-full">
+                    <div class="card-body overflow-y-auto">
+                        <h3 class="card-title text-xl flex items-center mb-4">
+                            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c1.657 0 3-1.343 3-3S13.657 2 12 2s-3 1.343-3 3 1.343 3 3 3zM12 14c2.21 0 4-1.79 4-4H8c0 2.21 1.79 4 4 4zM12 16c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                            </svg>
+                            使用條款
+                        </h3>
+
+                        <!-- 載入中 -->
+                        <div id="terms-loading-profile" class="flex justify-center items-center py-8">
+                            <span class="loading loading-spinner loading-lg"></span>
+                            <span class="ml-2">載入條款內容中...</span>
+                        </div>
+
+                        <!-- 條款 Markdown -> HTML -->
+                        <div id="terms-text-profile" class="prose prose-sm max-w-none hidden"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 危險區域 -->
+            <div id="danger-content" class="tab-content" style="display: none;">
+                <div class="card bg-base-100 shadow border-error">
+                    <div class="card-body">
+                        <h3 class="card-title text-xl flex items-center text-error">
+                            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                            </svg>
+                            危險區域
+                        </h3>
+                        
+                        <div class="alert alert-warning mb-6 mt-6">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                            </svg>
+                            <div>
+                                <h4 class="font-bold">注意！</h4>
+                                <p class="text-sm">以下操作將永久刪除您的帳號和所有相關資料，此操作無法復原。</p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-4">
+                            <h4 class="text-lg font-semibold text-error">刪除帳號</h4>
+                            <p class="text-sm text-gray-600">
+                                刪除帳號將會：
+                            </p>
+                            <ul class="list-disc list-inside text-sm text-gray-600 space-y-1 ml-4">
+                                <li>永久刪除您的個人資料</li>
+                                <li>移除所有相關的使用記錄</li>
+                                <li>立即登出並無法再次登入</li>
+                                <li>此操作無法復原</li>
+                            </ul>
+                            
+                            <div class="divider"></div>
+                            
+                            <form method="post" class="space-y-4" onsubmit="return confirmDeletion()">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="delete_account">
+                                
+                                <div class="form-control">
+                                    <label class="label">
+                                        <span class="label-text font-medium text-error">
+                                            請輸入您的使用者名稱 "{{ user.username }}" 以確認刪除：
+                                        </span>
+                                    </label>
+                                    <input type="text" name="confirmation" class="input input-bordered input-error w-full" 
+                                           placeholder="請輸入您的使用者名稱" required>
+                                </div>
+                                
+                                <div class="card-actions justify-end">
+                                    <button type="submit" class="btn btn-error">
+                                        🗑️ 永久刪除帳號
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            </div> <!-- 關閉固定高度容器 -->
+        </div>
+    </div>
+</div>
+
+<!-- 方案說明彈窗 -->
+<div id="plan-help-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] flex flex-col">
+            <!-- 彈窗標題 -->
+            <div class="flex items-center justify-between p-6 border-b">
+                <h3 class="text-lg font-semibold text-gray-900">使用方案說明</h3>
+                <button id="close-plan-help-modal" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- 方案比較表 -->
+            <div class="flex-1 p-6 overflow-y-auto">
+                <div class="space-y-6">
+                    <p class="text-gray-600">以下是各種使用方案的詳細比較：</p>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="table table-zebra w-full">
+                            <thead>
+                                <tr class="bg-gray-100">
+                                    <th class="font-bold text-gray-800">方案類型</th>
+                                    <th class="font-bold text-gray-800">每月聊天次數</th>
+                                    <th class="font-bold text-gray-800">私有資料源數量</th>
+                                    <th class="font-bold text-gray-800">每個資料源檔案數</th>
+                                    <th class="font-bold text-gray-800">說明</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="bg-gray-50">
+                                    <td class="font-semibold text-gray-800">
+                                        <div class="flex items-center">
+                                            <span class="badge badge-neutral mr-2">👤</span>
+                                            一般用戶
+                                        </div>
+                                    </td>
+                                    <td><span class="badge badge-primary">100</span></td>
+                                    <td><span class="badge badge-secondary">2</span></td>
+                                    <td><span class="badge badge-secondary">5</span></td>
+                                    <td class="text-sm text-gray-600">標準用戶，適合日常使用和學習</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- 功能說明 -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                        <div class="card bg-blue-50 border border-blue-200">
+                            <div class="card-body p-4">
+                                <h4 class="font-semibold text-blue-800 flex items-center">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                                    </svg>
+                                    每月聊天次數
+                                </h4>
+                                <p class="text-sm text-blue-600 mt-2">每月可以與 AI 進行對話的次數，每月初 (UTC+8) 自動重置。</p>
+                            </div>
+                        </div>
+                        
+                        <div class="card bg-green-50 border border-green-200">
+                            <div class="card-body p-4">
+                                <h4 class="font-semibold text-green-800 flex items-center">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                                    </svg>
+                                    私有資料源
+                                </h4>
+                                <p class="text-sm text-green-600 mt-2">可以建立的私有知識庫數量，用於上傳和管理您的專屬文件。</p>
+                            </div>
+                        </div>
+                        
+                        <div class="card bg-purple-50 border border-purple-200">
+                            <div class="card-body p-4">
+                                <h4 class="font-semibold text-purple-800 flex items-center">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                    </svg>
+                                    檔案數量限制
+                                </h4>
+                                <p class="text-sm text-purple-600 mt-2">每個私有資料源最多可以上傳的檔案數量。</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 彈窗底部 -->
+            <div class="flex justify-end p-6 border-t bg-gray-50">
+                <button id="close-plan-help-modal-2" class="btn btn-primary">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                    關閉
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 標籤切換功能
+document.addEventListener('DOMContentLoaded', function() {
+    // 標籤切換
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', function(e) {
+            e.preventDefault();
+            const targetTab = this.getAttribute('data-tab');
+            
+            // 更新標籤樣式
+            document.querySelectorAll('.tab').forEach(t => {
+                t.classList.remove('tab-active');
+            });
+            this.classList.add('tab-active');
+            
+            // 切換內容
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.style.display = 'none';
+            });
+            const targetContent = document.getElementById(targetTab === 'terms' ? 'terms-tab-content' : targetTab + '-content');
+            if (targetContent) {
+                targetContent.style.display = 'block';
+            }
+
+            // 若為條款分頁且尚未載入，開始載入條款
+            if (targetTab === 'terms' && !window.termsLoaded) {
+                loadTermsForProfile();
+            }
+        });
+    });
+    
+    // 方案說明彈窗
+    const planHelpBtn = document.getElementById('plan-help-btn');
+    const planHelpModal = document.getElementById('plan-help-modal');
+    const closePlanHelpModal = document.getElementById('close-plan-help-modal');
+    const closePlanHelpModal2 = document.getElementById('close-plan-help-modal-2');
+    
+    if (planHelpBtn) {
+        planHelpBtn.addEventListener('click', function() {
+            planHelpModal.classList.remove('hidden');
+        });
+    }
+    
+    if (closePlanHelpModal) {
+        closePlanHelpModal.addEventListener('click', function() {
+            planHelpModal.classList.add('hidden');
+        });
+    }
+    
+    if (closePlanHelpModal2) {
+        closePlanHelpModal2.addEventListener('click', function() {
+            planHelpModal.classList.add('hidden');
+        });
+    }
+    
+    // 點擊彈窗背景關閉
+    if (planHelpModal) {
+        planHelpModal.addEventListener('click', function(e) {
+            if (e.target === planHelpModal) {
+                planHelpModal.classList.add('hidden');
+            }
+        });
+    }
+});
+
+// 帳號刪除確認
+function confirmDeletion() {
+    const confirmation = document.querySelector('input[name="confirmation"]').value;
+    const username = "{{ user.username }}";
+    
+    if (confirmation !== username) {
+        alert('請正確輸入您的使用者名稱以確認刪除。');
+        return false;
+    }
+    
+    return confirm('您確定要永久刪除您的帳號嗎？此操作無法復原！');
+}
+
+// ---------- 條款載入 ----------
+window.termsLoaded = false;
+
+async function loadTermsForProfile() {
+    try {
+        const loadingEl = document.getElementById('terms-loading-profile');
+        const textEl = document.getElementById('terms-text-profile');
+
+        // 使用專門的條款內容 API - 添加時間戳避免快取
+        let contentMarkdown = null;
+        const timestamp = new Date().getTime();
+        const response = await fetch(`/websites/terms-content/?t=${timestamp}`);
+
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+                contentMarkdown = data.terms_content;
+            } else {
+                console.warn('獲取條款內容失敗:', data.message);
+                // 使用預設條款作為後備
+                contentMarkdown = (typeof getDefaultTermsContent === 'function') ? getDefaultTermsContent() : '';
+            }
+        } else {
+            console.warn('條款 API 請求失敗，使用預設條款');
+            // 使用預設條款作為後備
+            contentMarkdown = (typeof getDefaultTermsContent === 'function') ? getDefaultTermsContent() : '';
+        }
+
+        // 轉 Markdown → HTML
+        let html = '';
+        if (typeof safeMarkdownToHtml === 'function') {
+            html = await safeMarkdownToHtml(contentMarkdown);
+        } else {
+            // 後備：簡易換行處理
+            html = '<pre>' + contentMarkdown.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</pre>';
+        }
+
+        // 顯示內容
+        if (textEl) {
+            textEl.innerHTML = html;
+            textEl.classList.remove('hidden');
+        }
+        if (loadingEl) {
+            loadingEl.classList.add('hidden');
+        }
+
+        window.termsLoaded = true;
+    } catch (err) {
+        console.error('載入條款失敗:', err);
+        const loadingEl = document.getElementById('terms-loading-profile');
+        if (loadingEl) {
+            loadingEl.innerHTML = '<span class="text-error">載入條款失敗，請稍後再試。</span>';
+        }
+    }
+}
+</script>
+{% endblock %} 

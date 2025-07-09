@@ -1,0 +1,32 @@
+# 單個檔案
+*.env
+MediGuide/.streamlit/secrets.toml
+db.sqlite3
+
+# Node.js 相關
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Django 靜態檔案收集目錄
+staticfiles/
+
+# 目錄名稱
+venv/
+.idea/
+__pycache__/
+Datas/
+postgres_data/
+mongo_data/
+redis_data/
+source_files/
+
+# macOS 系統文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

@@ -1,0 +1,167 @@
+{% extends 'home.html' %}
+
+{% block source-name %}{% endblock %}
+
+{% block source-description %}
+<div class="p-3 bg-red-50 border border-red-200 rounded">
+    <p class="text-sm font-semibold text-red-800 mb-2">🗑️ 刪除資料源</p>
+    <p class="text-xs text-red-600 mb-2">
+        刪除資料源會同時移除其中的所有檔案和相關資料，此操作無法復原。
+    </p>
+    <div class="flex flex-col space-y-1">
+        {% if not has_unlimited_source %}
+            <div class="text-xs text-red-700 bg-red-100 rounded px-2 py-1">
+                📊 已建立：{{ private_source_count }}/{{ private_source_limit }} 個資料源
+            </div>
+        {% else %}
+            <div class="text-xs text-red-700 bg-red-100 rounded px-2 py-1">
+                ✨ 無限制建立資料源
+            </div>
+        {% endif %}
+        
+        {% if not has_unlimited_files %}
+            <div class="text-xs text-blue-700 bg-blue-100 rounded px-2 py-1">
+                📄 此資料源：{{ current_file_count }}/{{ file_limit_per_source }} 個檔案
+            </div>
+        {% else %}
+            <div class="text-xs text-blue-700 bg-blue-100 rounded px-2 py-1">
+                ✨ 無限制上傳檔案
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block filter_section %}
+    <!-- 導航按鈕 -->
+    <div class="flex flex-wrap gap-2 mb-4">
+        <a href="{% url 'source_list' %}" class="btn btn-ghost">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+            </svg>
+            返回列表
+        </a>
+        <a href="{% url 'source_detail' source.id %}" class="btn btn-ghost">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            查看詳情
+        </a>
+    </div>
+{% endblock %}
+
+{% block data-table %}
+    <div class="data-table h-full overflow-y-auto pr-2">
+        <!-- 顯示訊息 -->
+        {% if messages %}
+            <div class="mb-4 space-y-2">
+                {% for message in messages %}
+                    <div class="alert {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-error{% else %}alert-info{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        
+        <!-- 刪除確認 -->
+        <div class="card bg-base-100 shadow-xl border-2 border-red-200">
+            <div class="card-body">
+                <h2 class="card-title text-2xl font-bold text-red-700 mb-6">
+                    <svg class="w-6 h-6 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.08 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                    </svg>
+                    確認刪除資料源
+                </h2>
+                
+                <!-- 資料源資訊 -->
+                <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
+                    <h3 class="font-semibold text-gray-800 mb-3">即將刪除的資料源：</h3>
+                    <div class="space-y-2 text-sm">
+                        <div><span class="font-semibold">名稱：</span>{{ source.name }}</div>
+                        <div><span class="font-semibold">描述：</span>{{ source.description }}</div>
+                        <div><span class="font-semibold">建立時間：</span>{{ source.created_at|date:"Y-m-d H:i" }}</div>
+                        <div><span class="font-semibold">檔案數量：</span>{{ source.file_count }} 個</div>
+                    </div>
+                </div>
+                
+                <!-- 警告訊息 -->
+                <div class="alert alert-error mb-6">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                        <h3 class="font-bold">⚠️ 重要警告</h3>
+                        <div class="text-xs mt-1">
+                            <ul class="space-y-1">
+                                <li>• 刪除後將無法復原此資料源及其所有檔案</li>
+                                <li>• 所有相關的對話記錄中的引用將失效</li>
+                                <li>• 建議在刪除前先備份重要檔案</li>
+                                <li>• 刪除後將釋放一個資料源額度</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 確認表單 -->
+                <form method="post" class="space-y-4">
+                    {% csrf_token %}
+                    
+                    <div class="form-control">
+                        <label class="label cursor-pointer justify-start">
+                            <input type="checkbox" class="checkbox checkbox-error mr-3" required id="confirm-delete">
+                            <span class="label-text text-red-700 font-medium">
+                                我了解此操作無法復原，確認要刪除資料源「{{ source.name }}」
+                            </span>
+                        </label>
+                    </div>
+                    
+                    <div class="card-actions justify-end pt-4">
+                        <a href="{% url 'source_detail' source.id %}" class="btn btn-ghost">取消</a>
+                        <button type="submit" class="btn btn-error" id="delete-btn" disabled>
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                            確認刪除
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const confirmCheckbox = document.getElementById('confirm-delete');
+        const deleteBtn = document.getElementById('delete-btn');
+        const form = document.querySelector('form');
+        
+        // 監聽確認勾選框
+        confirmCheckbox.addEventListener('change', function() {
+            deleteBtn.disabled = !this.checked;
+        });
+        
+        // 表單提交前再次確認
+        form.addEventListener('submit', function(e) {
+            if (!confirmCheckbox.checked) {
+                e.preventDefault();
+                alert('請先勾選確認刪除的選項');
+                return false;
+            }
+            
+            // 最後確認
+            if (!confirm('您確定要刪除這個資料源嗎？此操作無法復原！')) {
+                e.preventDefault();
+                return false;
+            }
+            
+            // 顯示載入狀態
+            deleteBtn.classList.add('loading');
+            deleteBtn.disabled = true;
+            deleteBtn.innerHTML = '<span class="loading loading-spinner"></span>刪除中...';
+        });
+    });
+</script>
+{% endblock %} 

@@ -1,0 +1,140 @@
+{% extends 'home.html' %}
+
+{% block source-name %}建立新資料源{% endblock %}
+
+{% block source-description %}
+<div class="p-3 bg-green-50 border border-green-200 rounded">
+    <p class="text-sm font-semibold text-green-800 mb-2">🎯 建立新資料源</p>
+    <p class="text-xs text-green-600 mb-2">
+        為您的專案建立一個新的私有資料庫，可以上傳各種格式的檔案進行智慧分析。
+    </p>
+    {% if not has_unlimited_source %}
+        <div class="text-xs text-green-700 bg-green-100 rounded px-2 py-1">
+            📊 已建立：{{ private_source_count }}/{{ private_source_limit }} 個資料源
+        </div>
+    {% else %}
+        <div class="text-xs text-green-700 bg-green-100 rounded px-2 py-1">
+            ✨ 無限制建立資料源
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block filter_section %}
+    <!-- 返回按鈕 -->
+    <div class="flex flex-wrap gap-2 mb-4">
+        <a href="{% url 'source_list' %}" class="btn btn-ghost">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+            </svg>
+            返回列表
+        </a>
+    </div>
+{% endblock %}
+
+{% block data-table %}
+    <div class="data-table h-full overflow-y-auto pr-2">
+        <!-- 顯示訊息 -->
+        {% if messages %}
+            <div class="mb-4 space-y-2">
+                {% for message in messages %}
+                    <div class="alert {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-error{% else %}alert-info{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        
+        <!-- 限制檢查 -->
+        {% if not can_create_source %}
+            <div class="alert alert-error mb-6">
+                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                    <h3 class="font-bold">無法建立新資料源</h3>
+                    <div class="text-xs">您已達到私有資料源數量上限（{{ private_source_limit }} 個）。請刪除現有資料源或聯繫管理員提升限制。</div>
+                </div>
+            </div>
+        {% else %}
+            <!-- 建立表單 -->
+            <div class="card bg-base-100 shadow-xl">
+                <div class="card-body">
+                    <h2 class="card-title text-2xl font-bold text-gray-800 mb-6">
+                        <svg class="w-6 h-6 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        建立新的資料源
+                    </h2>
+                    
+                    <form method="post" class="space-y-6">
+                        {% csrf_token %}
+                        
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text text-lg font-semibold">資料源名稱 <span class="text-red-500">*</span></span>
+                            </label>
+                            <input type="text" name="name" placeholder="例如：產品銷售報告" 
+                                   class="input input-bordered input-lg" required maxlength="255">
+                            <label class="label">
+                                <span class="label-text-alt text-gray-500">輸入一個清楚明確的資料源名稱，不能與現有資料源重複</span>
+                            </label>
+                        </div>
+                        
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text text-lg font-semibold">資料源描述 <span class="text-red-500">*</span></span>
+                            </label>
+                            <textarea name="description" placeholder="例如：包含2024年第一季度所有產品的銷售數據和分析報告，用於業務分析和決策支援..." 
+                                      class="textarea textarea-bordered textarea-lg h-32" required></textarea>
+                            <label class="label">
+                                <span class="label-text-alt text-gray-500">詳細描述這個資料源的內容和用途，有助於後續的檔案管理和AI分析</span>
+                            </label>
+                        </div>
+                        
+                        <div class="card-actions justify-end">
+                            <a href="{% url 'source_list' %}" class="btn btn-ghost">取消</a>
+                            <button type="submit" class="btn btn-primary">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                </svg>
+                                建立資料源
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 表單驗證
+        const form = document.querySelector('form');
+        const nameInput = document.querySelector('input[name="name"]');
+        const descriptionInput = document.querySelector('textarea[name="description"]');
+        
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                const name = nameInput.value.trim();
+                const description = descriptionInput.value.trim();
+                
+                if (!name || !description) {
+                    e.preventDefault();
+                    alert('請填寫所有必要欄位');
+                    return false;
+                }
+                
+                if (name.length > 255) {
+                    e.preventDefault();
+                    alert('資料源名稱不能超過255個字元');
+                    return false;
+                }
+            });
+        }
+    });
+</script>
+{% endblock %} 

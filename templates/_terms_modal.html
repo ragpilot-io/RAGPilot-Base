@@ -1,0 +1,538 @@
+<!-- 使用條款彈出視窗 -->
+<div id="terms-modal" class="modal">
+  <div class="modal-box w-11/12 max-w-4xl max-h-screen">
+    <div class="flex justify-between items-center mb-4 sticky top-0 bg-base-100 z-10 pb-4 border-b">
+      <h3 id="terms-title" class="font-bold text-xl">使用條款</h3>
+      <button class="btn btn-sm btn-circle btn-ghost" onclick="closeTermsModal()">✕</button>
+    </div>
+    
+    <div class="overflow-auto max-h-96">
+      <!-- Loading 狀態 -->
+      <div id="terms-loading" class="flex justify-center items-center py-8">
+        <div class="loading loading-spinner loading-lg"></div>
+        <span class="ml-2">載入條款內容中...</span>
+      </div>
+      
+      <!-- 條款內容 -->
+      <div id="terms-content" class="prose prose-sm max-w-none hidden">
+        <!-- 動態載入的條款內容將插入這裡 -->
+      </div>
+      
+      <!-- 錯誤訊息 -->
+      <div id="terms-error" class="alert alert-error hidden">
+        <span>載入條款內容失敗，請稍後再試。</span>
+      </div>
+    </div>
+    
+    <div class="modal-action">
+      <div id="terms-actions" class="hidden">
+        <button id="agree-btn" class="btn btn-primary" onclick="agreeToTerms()">
+          <span class="loading loading-spinner loading-sm hidden" id="agree-loading"></span>
+          同意並關閉
+        </button>
+        <button class="btn btn-ghost" onclick="closeTermsModal()">取消</button>
+      </div>
+      <div id="terms-view-only" class="hidden">
+        <button class="btn btn-primary" onclick="closeTermsModal()">關閉</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-backdrop" onclick="handleBackdropClick()"></div>
+</div>
+
+<script>
+// 處理背景點擊
+function handleBackdropClick() {
+  if (!isForced) {
+    closeTermsModal();
+  }
+}
+
+// 防止 ESC 鍵在強制模式下關閉彈窗
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'Escape' && isForced) {
+    const modal = document.getElementById('terms-modal');
+    if (modal && modal.classList.contains('modal-open')) {
+      event.preventDefault();
+      alert('您必須同意使用條款才能繼續使用本服務');
+    }
+  }
+});
+</script>
+
+<!-- Markdown 解析器 CDN -->
+<script>
+let isForced = false; // 是否為強制同意模式
+let markedReady = false;
+let markedLoadPromise = null;
+
+// 全域錯誤處理器，防止條款相關錯誤導致頁面崩潰
+window.addEventListener('error', function(event) {
+  if (event.filename && event.filename.includes('marked')) {
+    console.warn('Marked.js 相關錯誤，標記為載入失敗');
+    window.markedLoadFailed = true;
+    event.preventDefault(); // 防止錯誤傳播
+  }
+});
+
+// 動態載入 Marked.js 並處理載入狀態
+function loadMarkedJS() {
+  if (markedLoadPromise) {
+    return markedLoadPromise;
+  }
+  
+  markedLoadPromise = new Promise((resolve, reject) => {
+    // 檢查是否已經載入
+    if (typeof marked !== 'undefined' && marked.parse) {
+      markedReady = true;
+      resolve(true);
+      return;
+    }
+    
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/marked@9.1.2/marked.min.js';
+    script.async = true;
+    
+    script.onload = function() {
+      // 雙重檢查以確保 marked 真的可用
+      setTimeout(() => {
+        if (typeof marked !== 'undefined' && marked.parse) {
+          console.log('Marked.js 載入成功');
+          markedReady = true;
+          resolve(true);
+        } else {
+          console.warn('Marked.js 載入後仍無法使用');
+          window.markedLoadFailed = true;
+          resolve(false);
+        }
+      }, 100);
+    };
+    
+    script.onerror = function() {
+      console.warn('Marked.js CDN 載入失敗，將使用 Markdown 原文顯示');
+      window.markedLoadFailed = true;
+      resolve(false);
+    };
+    
+    // 設置超時機制
+    setTimeout(() => {
+      if (!markedReady && !window.markedLoadFailed) {
+        console.warn('Marked.js 載入超時，使用 Markdown 原文顯示');
+        window.markedLoadFailed = true;
+        resolve(false);
+      }
+    }, 5000);
+    
+    document.head.appendChild(script);
+  });
+  
+  return markedLoadPromise;
+}
+
+// 立即開始載入 Marked.js
+loadMarkedJS();
+
+// 檢查 Marked.js 是否真正可用
+function isMarkedAvailable() {
+  if (window.markedLoadFailed) {
+    return false;
+  }
+  
+  try {
+    return markedReady && 
+           typeof marked !== 'undefined' && 
+           marked !== null && 
+           typeof marked.parse === 'function';
+  } catch (e) {
+    console.warn('檢查 Marked.js 時發生錯誤:', e);
+    window.markedLoadFailed = true;
+    return false;
+  }
+}
+
+// 安全地轉換 Markdown 內容（非同步版本）
+async function safeMarkdownToHtml(content) {
+  // 等待 Marked.js 載入完成
+  try {
+    await loadMarkedJS();
+  } catch (e) {
+    console.warn('等待 Marked.js 載入時發生錯誤:', e);
+  }
+  
+  if (isMarkedAvailable()) {
+    try {
+      return marked.parse(content);
+    } catch (e) {
+      console.warn('Marked.js 解析失敗，使用 Markdown 原文顯示:', e);
+    }
+  }
+  
+  // 降級到顯示 Markdown 原文
+  console.warn('使用 Markdown 原文顯示');
+  return '<pre style="white-space: pre-wrap; font-family: inherit; line-height: 1.5; background: #f8f9fa; padding: 1rem; border-radius: 0.5rem; border: 1px solid #e9ecef;">' + 
+         content.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</pre>';
+}
+
+async function openTermsModal(forced = false) {
+  try {
+    isForced = forced;
+    const modal = document.getElementById('terms-modal');
+    
+    if (!modal) {
+      console.error('找不到條款模態框元素');
+      return;
+    }
+    
+    // 重設狀態
+    document.getElementById('terms-loading').classList.remove('hidden');
+    document.getElementById('terms-content').classList.add('hidden');
+    document.getElementById('terms-error').classList.add('hidden');
+    document.getElementById('terms-actions').classList.add('hidden');
+    document.getElementById('terms-view-only').classList.add('hidden');
+    
+    modal.classList.add('modal-open');
+    
+    // 載入條款內容
+    await loadTermsContent(forced);
+  } catch (error) {
+    console.error('開啟條款模態框時發生錯誤:', error);
+    try {
+      showTermsError('開啟條款失敗，請重新整理頁面後再試');
+    } catch (e) {
+      alert('開啟條款失敗，請重新整理頁面後再試');
+    }
+  }
+}
+
+function closeTermsModal() {
+  if (isForced) {
+    // 如果是強制模式，不允許關閉
+    alert('您必須同意使用條款才能繼續使用本服務');
+    return;
+  }
+  
+  const modal = document.getElementById('terms-modal');
+  modal.classList.remove('modal-open');
+  
+  // 重置檢查標記，允許下次重新檢查
+  console.log('條款模態框關閉，重置檢查標記');
+  resetTermsCheckFlags();
+}
+
+// 重置條款檢查標記的函數
+function resetTermsCheckFlags() {
+  if (typeof termsCheckPerformed !== 'undefined') {
+    termsCheckPerformed = false;
+  }
+  if (typeof forceTermsProcessed !== 'undefined') {
+    forceTermsProcessed = false;
+  }
+}
+
+function showTermsError(message) {
+  try {
+    document.getElementById('terms-loading').classList.add('hidden');
+    document.getElementById('terms-content').classList.add('hidden');
+    
+    const errorElement = document.getElementById('terms-error');
+    errorElement.querySelector('span').textContent = message || '載入條款內容失敗，請稍後再試。';
+    errorElement.classList.remove('hidden');
+    
+    // 顯示關閉按鈕
+    document.getElementById('terms-view-only').classList.remove('hidden');
+  } catch (error) {
+    console.error('顯示錯誤訊息失敗:', error);
+    alert('系統發生錯誤，請重新整理頁面');
+  }
+}
+
+async function loadTermsContent(forced = false) {
+  try {
+    // 添加時間戳參數避免快取
+    const timestamp = new Date().getTime();
+    const response = await fetch(`/websites/check-terms-status/?t=${timestamp}`);
+    
+    if (response.status === 403 || response.status === 401) {
+      // 未登入用戶，顯示預設條款內容
+      await showDefaultTermsForGuest();
+      return;
+    }
+    
+    const data = await response.json();
+    if (!data) return; // 如果是未登入用戶，已經在上面處理了
+    
+    document.getElementById('terms-loading').classList.add('hidden');
+    
+    if (data.needs_agreement || !forced) {
+      // 顯示條款內容
+      const content = data.terms_content || getDefaultTermsContent();
+      const title = data.terms_title || '使用條款';
+      
+      document.getElementById('terms-title').textContent = title;
+      
+      // 安全地轉換 Markdown 內容
+      const htmlContent = await safeMarkdownToHtml(content);
+      
+      document.getElementById('terms-content').innerHTML = htmlContent;
+      document.getElementById('terms-content').classList.remove('hidden');
+      
+      // 顯示適當的按鈕
+      if (data.needs_agreement) {
+        document.getElementById('terms-actions').classList.remove('hidden');
+      } else {
+        document.getElementById('terms-view-only').classList.remove('hidden');
+      }
+    } else {
+      // 用戶已同意，直接關閉
+      closeTermsModal();
+    }
+  } catch (error) {
+    console.error('載入條款失敗:', error);
+    // 如果是網路錯誤，顯示預設條款內容
+    try {
+      await showDefaultTermsForGuest();
+    } catch (e) {
+      console.error('顯示預設條款也失敗:', e);
+      showTermsError('載入條款內容失敗，請重新整理頁面後再試');
+    }
+  }
+}
+
+async function showDefaultTermsForGuest() {
+  try {
+    document.getElementById('terms-loading').classList.add('hidden');
+    
+    // 顯示預設條款內容
+    const content = getDefaultTermsContent();
+    const title = '使用條款';
+    
+    document.getElementById('terms-title').textContent = title;
+    
+    // 安全地轉換 Markdown 內容
+    const htmlContent = await safeMarkdownToHtml(content);
+    
+    document.getElementById('terms-content').innerHTML = htmlContent;
+    document.getElementById('terms-content').classList.remove('hidden');
+    
+    // 對於未登入用戶，只顯示關閉按鈕
+    document.getElementById('terms-view-only').classList.remove('hidden');
+  } catch (error) {
+    console.error('顯示條款內容時發生錯誤:', error);
+    showTermsError('載入條款內容失敗');
+  }
+}
+
+function agreeToTerms() {
+  const agreeBtn = document.getElementById('agree-btn');
+  const agreeLoading = document.getElementById('agree-loading');
+  
+  // 顯示載入狀態
+  agreeBtn.disabled = true;
+  agreeLoading.classList.remove('hidden');
+  
+  // 取得 CSRF token
+  const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+                    document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+  
+  fetch('/websites/agree-to-terms/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': csrfToken,
+    },
+    body: JSON.stringify({})
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      // 同意成功
+      const modal = document.getElementById('terms-modal');
+      modal.classList.remove('modal-open');
+      
+      // 重置檢查標記
+      console.log('條款同意成功，重置檢查標記');
+      resetTermsCheckFlags();
+      
+      // 顯示成功訊息
+      if (typeof showSuccessMessage === 'function') {
+        showSuccessMessage('條款同意已記錄');
+      }
+      
+      // 重新載入頁面或更新狀態
+      if (isForced) {
+        // 如果是強制模式，重新載入頁面
+        window.location.reload();
+      }
+    } else {
+      alert('同意失敗：' + data.message);
+    }
+  })
+  .catch(error => {
+    console.error('同意條款失敗:', error);
+    alert('操作失敗，請稍後再試');
+  })
+  .finally(() => {
+    // 恢復按鈕狀態
+    agreeBtn.disabled = false;
+    agreeLoading.classList.add('hidden');
+  });
+}
+
+function getDefaultTermsContent() {
+  return `# 使用條款
+
+歡迎您使用**數據領航員 RAGPilot**（以下簡稱「本服務」）。在您註冊、使用或瀏覽本服務前，請詳細閱讀以下使用條款（以下簡稱「本條款」）。一旦您開始使用，即表示您已閱讀、理解並同意遵守本條款之所有內容。
+
+## 一、服務內容
+
+本服務係基於 RAG（Retrieval-Augmented Generation）技術所建構的問答與內容生成平台，提供下列功能：
+
+- 上傳文件以進行問答摘要（支援 PDF、CSV、JSON、XML 等格式）
+- 從本地資料或開放資料中進行語意查詢與檢索
+- 基於語言模型提供生成型回應與分析建議
+
+## 二、使用者義務與承諾
+
+- 不得利用本服務從事任何違法或侵害第三人權益之行為
+- 上傳資料不得含有機密、個資、非法或違反著作權內容
+- 對於使用 AI 模型所產生的內容，應自行判斷其正確性與適用性
+- 如發現異常使用情形（如濫用 API、自動爬蟲、系統攻擊等），本服務有權立即終止或限制使用
+
+## 三、智慧財產權
+
+- 本服務所包含之介面、程式碼、商標、模型設計，均為提供者或其授權人所擁有
+- 使用者上傳之合法資料仍歸使用者所有，但使用者同意授權本服務於服務運作期間內以非專屬方式使用該資料（僅限於技術處理與模型回應）
+- 使用者不得重製、修改、或另行提供本服務內容予第三方使用
+
+## 四、免責聲明
+
+- 本服務所產生之內容係由語言模型自動生成，可能包含不正確、不完整或過時之資訊，使用者應自行判斷其可靠性
+- 本服務不保證不中斷或無錯誤，亦不對因使用本服務所衍生之任何損失負責
+- 本服務不適用於緊急醫療、法律或其他需高度專業判斷之場景
+
+## 五、資料處理與隱私
+
+- 使用者資料將依據本服務之隱私政策進行處理與保護
+- 使用者上傳的檔案（如 PDF、CSV、JSON、XML 等），將被用於進行內容切割、語意向量生成與問答推論
+- 本服務會透過第三方模型提供者（包含但不限於 **OpenAI** 與 **Cohere**）的 API 進行語言模型推論與向量嵌入，未來也可能新增其他服務供應商以提升處理品質
+- 上述處理僅限於提供使用者查詢功能與系統優化，且不會將資料用於模型訓練或對外揭露
+- 若使用者選擇刪除帳號或資料，提供者將依據合理流程處理並於【xx日】內完成移除
+
+## 六、條款變更與終止
+
+- 本服務保留隨時修改本條款之權利，並於頁面公告更新版本
+- 使用者繼續使用本服務，即視為同意修正後之條款
+- 如使用者違反本條款，本服務有權停止其使用資格並刪除其資料
+
+## 七、聯絡方式
+
+如有任何使用相關問題，請聯繫：
+
+- 電子郵件：[nickchen1998@gmail.com](mailto:nickchen1998@gmail.com)
+- 網站連結：[https://www.ragpilot.ai](https://www.ragpilot.ai)
+`;
+}
+
+// 防止重複檢查的標記
+let termsCheckPerformed = false;
+
+// 頁面載入時檢查是否需要強制同意條款
+document.addEventListener('DOMContentLoaded', function() {
+  // 防止重複檢查
+  if (termsCheckPerformed) {
+    console.log('條款檢查已執行過，跳過重複檢查');
+    return;
+  }
+  
+  // 只在登入後的頁面檢查（排除登入、admin、靜態資源等頁面）
+  if (!window.location.pathname.includes('/login/') &&
+      !window.location.pathname.includes('/admin/') &&
+      !window.location.pathname.includes('/accounts/') &&
+      !window.location.pathname.includes('/static/') &&
+      !window.location.pathname.includes('/websites/') &&
+      window.location.pathname !== '/favicon.ico') {
+    
+    // 標記檢查已執行
+    termsCheckPerformed = true;
+    
+    // 等待 Marked.js 載入完成後再檢查條款
+    loadMarkedJS().then(() => {
+      // 稍微延遲執行，確保頁面完全穩定
+      setTimeout(() => {
+        checkTermsAgreement();
+      }, 300);
+    }).catch(e => {
+      console.warn('Marked.js 載入失敗，但仍繼續檢查條款:', e);
+      setTimeout(() => {
+        checkTermsAgreement();
+      }, 300);
+    });
+  }
+});
+
+// 防止條款檢查函數重複執行的標記
+let forceTermsProcessed = false;
+
+function checkTermsAgreement() {
+  try {
+    // 檢查URL中是否有force_terms參數
+    const urlParams = new URLSearchParams(window.location.search);
+    const forceTerms = urlParams.get('force_terms');
+    
+    if (forceTerms === '1') {
+      // 防止重複處理 force_terms
+      if (forceTermsProcessed) {
+        console.log('force_terms 已處理過，跳過重複處理');
+        return;
+      }
+      forceTermsProcessed = true;
+      
+      // 強制彈出條款（來自 TermsRequiredMixin 重定向）
+      console.log('檢測到 force_terms=1 參數，將彈出條款模態框');
+      setTimeout(async () => {
+        try {
+          await openTermsModal(true);
+          // 清除URL中的force_terms參數
+          urlParams.delete('force_terms');
+          const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+          window.history.replaceState({}, '', newUrl);
+        } catch (e) {
+          console.error('彈出條款模態框失敗:', e);
+        }
+      }, 500);
+      return;
+    }
+    
+    // 正常的條款檢查流程
+    fetch('/websites/check-terms-status/')
+      .then(response => {
+        if (!response.ok) {
+          if (response.status === 403 || response.status === 401) {
+            // 未登入用戶，忽略條款檢查
+            return;
+          }
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (data && data.needs_agreement) {
+          // 需要同意條款，強制彈出
+          setTimeout(async () => {
+            try {
+              await openTermsModal(true);
+            } catch (e) {
+              console.error('彈出條款模態框失敗:', e);
+            }
+          }, 1000); // 延遲1秒顯示，讓頁面完全載入
+        }
+      })
+      .catch(error => {
+        console.error('檢查條款狀態失敗:', error);
+        // 不要因為檢查條款失敗而影響頁面正常使用
+      });
+  } catch (error) {
+    console.error('條款檢查函數執行失敗:', error);
+  }
+}
+</script> 

@@ -1,0 +1,2163 @@
+<!-- 對話小工具 -->
+<div class="flex-1 flex flex-col bg-white rounded-lg shadow overflow-hidden relative z-[30]">
+    <!-- 對話標題 -->
+    <div class="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4 relative z-[35]">
+        <h3 class="text-lg font-semibold flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+            </svg>
+            <span id="chat-title">智能助手 - RAGPilot AI</span>
+        </h3>
+        <div class="text-blue-100 text-sm mt-1">
+            <div class="flex flex-col space-y-2">
+                <div class="flex flex-col">
+                    <div class="text-xs mt-1 opacity-90">
+                        {% if is_unlimited %}
+                            <span class="bg-green-500 text-white px-2 py-1 rounded text-xs">
+                                無限制方案 - 可無限制進行問答
+                            </span>
+                        {% else %}
+                            <span class="{% if is_over_chat_limit %}bg-red-500{% else %}bg-blue-400{% endif %} text-white px-2 py-1 rounded text-xs">
+                                本月使用: {{ monthly_chat_count }}/{{ user_limit.chat_limit_per_month }}
+                                {% if is_over_chat_limit %} - 已達上限{% endif %}
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div id="chat-buttons-container" class="flex space-x-1 sm:space-x-2 justify-end sm:justify-start relative z-[35]">
+                <button id="show-references-btn" class="btn btn-xs sm:btn-sm btn-outline text-white border-white hover:bg-white hover:text-blue-600">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    <span id="ref-btn-text-desktop" class="hidden sm:inline">參考資料 (<span id="reference-count">0</span>)</span>
+                    <span id="ref-btn-text-mobile" class="sm:hidden">參考資料 (<span id="reference-count-mobile">0</span>)</span>
+                </button>
+                    <button id="clear-conversation-btn" class="btn btn-xs sm:btn-sm btn-outline text-white border-white hover:bg-white hover:text-red-600">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                        <span id="clear-btn-text-desktop" class="hidden sm:inline">清空對話</span>
+                        <span id="clear-btn-text-mobile" class="sm:hidden">清空</span>
+                </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 對話訊息區域 -->
+    <div id="chat-messages" class="flex-1 p-4 overflow-y-auto bg-gray-50">
+        <!-- 問題建議 - 沒有對話記錄時顯示 -->
+        <div id="empty-chat-suggestions" class="h-full flex items-center justify-center">
+            <div class="text-center max-w-md">
+                <div class="mb-6">
+                    <svg class="w-16 h-16 mx-auto text-blue-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2">開始您的探索之旅</h3>
+                    <div class="flex items-center justify-center space-x-4 mb-6">
+                        <p class="text-sm text-gray-500">選擇以下問題開始對話，或直接輸入您的問題</p>
+                        <button id="refresh-suggestions-btn" class="text-xs text-blue-600 hover:text-blue-800 underline" title="重新生成問題">
+                            重新生成
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 建議問題容器 -->
+                <div id="suggestions-container" class="space-y-3">
+                    <!-- 載入狀態 -->
+                    <div id="suggestions-loading" class="flex items-center justify-center py-8">
+                        <div class="flex flex-col items-center space-y-2 text-gray-500">
+                            <div class="flex items-center space-x-3">
+                                <div class="animate-spin w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full"></div>
+                                <span class="text-sm">正在為您準備問題建議...</span>
+                            </div>
+                            <span id="loading-timestamp" class="text-xs text-gray-400"></span>
+                        </div>
+                    </div>
+                    
+                    <!-- 動態生成的建議問題會插入到這裡 -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- 實際對話訊息容器 -->
+        <div id="conversation-messages" class="hidden space-y-4">
+            <!-- 訊息將通過 JavaScript 動態添加到這裡 -->
+        </div>
+    </div>
+
+    <!-- 連線狀態指示器 -->
+    <div id="connection-status" class="px-4 py-3 bg-yellow-50 border-t border-yellow-200 text-yellow-800 text-sm hidden">
+        <div class="flex items-center">
+            <div class="w-2 h-2 bg-yellow-400 rounded-full mr-2 animate-pulse"></div>
+            <span>正在連線...</span>
+        </div>
+    </div>
+
+    <!-- 輸入區域 -->
+    <div class="p-4 border-t border-gray-200 bg-white">
+
+        
+        {% if is_over_chat_limit %}
+            <!-- 超過聊天限制時的提示 -->
+            <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+                <div class="text-red-600 mb-2">
+                    <svg class="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                    </svg>
+                </div>
+                <h4 class="text-red-800 font-semibold mb-1">本月對話次數已達上限</h4>
+                <p class="text-red-600 text-sm">
+                    您本月已使用 {{ monthly_chat_count }}/{{ user_limit.chat_limit_per_month }} 次對話額度。
+                    <br>請下月再來使用，或聯繫管理員升級您的方案。
+                </p>
+            </div>
+        {% else %}
+            <div class="flex space-x-3">
+                <input 
+                    type="text" 
+                    id="chat-input" 
+                    class="flex-1 input input-bordered focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                    maxlength="500"
+                    placeholder="輸入您的問題..."
+                />
+                <button 
+                    id="send-button" 
+                    class="btn btn-primary px-6"
+                    disabled
+                >
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                    發送
+                </button>
+            </div>
+            <div class="mt-2 flex justify-between items-center text-sm text-gray-500">
+                <span>按 Enter 發送訊息 • 最多 500 字元</span>
+                {% if not is_unlimited %}
+                    <span class="text-xs">
+                        {{ monthly_chat_count }} / {{ user_limit.chat_limit_per_month }} 次對話
+                    </span>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 參考資料彈窗 -->
+<div id="references-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] flex flex-col">
+            <!-- 彈窗標題 -->
+            <div class="flex items-center justify-between p-6 border-b">
+                <h3 class="text-lg font-semibold text-gray-900">當前參考資料</h3>
+                <button id="close-modal-btn" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- 參考資料列表 -->
+            <div id="references-list" class="flex-1 p-6 overflow-y-auto">
+                <div id="no-references" class="text-center text-gray-500 py-8">
+                    <svg class="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    <p class="text-lg font-medium">尚未選擇參考資料</p>
+                    <p class="text-sm mt-2">請從右側資料列表中點擊「加入對話」按鈕來添加參考資料</p>
+                </div>
+            </div>
+            
+            <!-- 彈窗底部按鈕 -->
+            <div class="flex justify-end space-x-3 p-6 border-t bg-gray-50">
+                <button id="clear-all-references-btn" class="btn btn-outline btn-error">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                    清空
+                </button>
+                <button id="close-modal-btn-2" class="btn btn-primary">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                    關閉
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 對話功能 JavaScript -->
+<script>
+class ChatManager {
+    constructor() {
+        this.socket = null;
+        this.chatMessages = document.getElementById('chat-messages');
+        this.chatInput = document.getElementById('chat-input');
+        this.sendButton = document.getElementById('send-button');
+        this.connectionStatus = document.getElementById('connection-status');
+        this.references = new Map();
+        this.sessionId = null;  // 初始化 sessionId
+        
+        // 方案限制相關
+        this.isOverChatLimit = {{ is_over_chat_limit|yesno:"true,false" }};
+        this.isUnlimited = {{ is_unlimited|yesno:"true,false" }};
+        this.monthlyChatCount = {{ monthly_chat_count }};
+        this.chatLimit = {{ user_limit.chat_limit_per_month }};
+        
+        this.init();
+    }
+
+    init() {
+        this.setupEventListeners();
+        this.setupReferenceSystem();
+        this.setupQuestionSuggestions();
+        this.loadReferencesFromStorage();
+        this.updateButtonStates();
+        this.setupNavigationListener();
+        this.updateCurrentDataSource(); // 更新當前資料源顯示
+        this.setupChatButtonsLayoutWatcher(); // 設置按鈕佈局監控
+        
+        // 載入對話記錄
+        this.loadConversationHistory();
+        
+        // 更新顯示狀態
+        this.updateSuggestionsDisplay();
+    }
+
+    updateCurrentDataSource() {
+        const chatTitleElement = document.getElementById('chat-title');
+        if (!chatTitleElement) return;
+        
+        // 根據當前頁面路徑決定資料源名稱
+        const currentPath = window.location.pathname;
+        let sourceName = '';
+        
+        if (currentPath.includes('/symptoms/')) {
+            sourceName = '衛福部 台灣 e 院';
+        } else if (currentPath.includes('/gov-data/')) {
+            sourceName = '政府資料開放平臺';
+        } else if (currentPath.includes('/sources/')) {
+            sourceName = '自建資料源';
+        } else {
+            sourceName = '首頁';
+        }
+        
+        chatTitleElement.textContent = `智能助手 - RAGPilot AI - ${sourceName}`;
+    }
+
+    updateChatButtonsLayout() {
+        const chatButtonsContainer = document.getElementById('chat-buttons-container');
+        if (!chatButtonsContainer) return;
+        
+        const sidebar = document.getElementById('sidebar');
+        const isSmallScreen = window.innerWidth < 768;
+        const isSidebarExpanded = sidebar && !sidebar.classList.contains('-translate-x-full');
+        
+        // 計算當前狀態
+        const currentState = `${isSmallScreen}-${isSidebarExpanded}`;
+        
+        // 如果狀態沒有變化，跳過更新
+        if (this.lastLayoutState === currentState) {
+            return;
+        }
+        
+        this.lastLayoutState = currentState;
+        
+        // 在手機版且 sidebar 展開時使用垂直佈局
+        if (isSmallScreen && isSidebarExpanded) {
+            chatButtonsContainer.className = 'flex flex-col space-y-1 items-stretch relative z-[35]';
+            this.updateButtonTextForVerticalLayout();
+        } else {
+            chatButtonsContainer.className = 'flex space-x-1 sm:space-x-2 justify-end sm:justify-start relative z-[35]';
+            this.updateButtonTextForHorizontalLayout();
+        }
+    }
+
+    updateButtonTextForVerticalLayout() {
+        // 在垂直佈局時顯示完整文字
+        const refBtnDesktop = document.getElementById('ref-btn-text-desktop');
+        const refBtnMobile = document.getElementById('ref-btn-text-mobile');
+        const clearBtnDesktop = document.getElementById('clear-btn-text-desktop');
+        const clearBtnMobile = document.getElementById('clear-btn-text-mobile');
+        
+        if (refBtnDesktop && refBtnMobile) {
+            refBtnDesktop.classList.remove('hidden', 'sm:inline');
+            refBtnDesktop.classList.add('inline');
+            refBtnMobile.classList.add('hidden');
+        }
+        
+        if (clearBtnDesktop && clearBtnMobile) {
+            clearBtnDesktop.classList.remove('hidden', 'sm:inline');
+            clearBtnDesktop.classList.add('inline');
+            clearBtnMobile.classList.add('hidden');
+        }
+    }
+
+    updateButtonTextForHorizontalLayout() {
+        // 恢復響應式文字顯示
+        const refBtnDesktop = document.getElementById('ref-btn-text-desktop');
+        const refBtnMobile = document.getElementById('ref-btn-text-mobile');
+        const clearBtnDesktop = document.getElementById('clear-btn-text-desktop');
+        const clearBtnMobile = document.getElementById('clear-btn-text-mobile');
+        
+        if (refBtnDesktop && refBtnMobile) {
+            refBtnDesktop.classList.remove('inline');
+            refBtnDesktop.classList.add('hidden', 'sm:inline');
+            refBtnMobile.classList.remove('hidden');
+            refBtnMobile.classList.add('sm:hidden');
+        }
+        
+        if (clearBtnDesktop && clearBtnMobile) {
+            clearBtnDesktop.classList.remove('inline');
+            clearBtnDesktop.classList.add('hidden', 'sm:inline');
+            clearBtnMobile.classList.remove('hidden');
+            clearBtnMobile.classList.add('sm:hidden');
+        }
+    }
+
+    setupChatButtonsLayoutWatcher() {
+        // 記錄上次的狀態，避免不必要的更新
+        this.lastLayoutState = null;
+        
+        // 初始調用
+        this.updateChatButtonsLayout();
+        
+        // 監聽視窗大小變化
+        window.addEventListener('resize', () => {
+            setTimeout(() => {
+                this.updateChatButtonsLayout();
+            }, 100); // 避免 resize 事件觸發太頻繁
+        });
+        
+        // 監聽 sidebar 狀態變化
+        const sidebar = document.getElementById('sidebar');
+        if (sidebar) {
+            const observer = new MutationObserver(() => {
+                this.updateChatButtonsLayout();
+            });
+            
+            observer.observe(sidebar, {
+                attributes: true,
+                attributeFilter: ['class']
+            });
+        }
+        
+        // 備用：定期檢查（較低頻率，以防 MutationObserver 不工作）
+        setInterval(() => {
+            this.updateChatButtonsLayout();
+        }, 3000);
+    }
+
+    setupReferenceSystem() {
+        document.getElementById('show-references-btn').addEventListener('click', () => {
+            this.showCurrentReferencesModal();
+        });
+        
+        document.getElementById('close-modal-btn').addEventListener('click', () => {
+            this.hideReferencesModal();
+        });
+        
+        document.getElementById('close-modal-btn-2').addEventListener('click', () => {
+            this.hideReferencesModal();
+        });
+        
+        document.getElementById('clear-all-references-btn').addEventListener('click', () => {
+            this.clearAllReferences();
+        });
+        
+        document.getElementById('clear-conversation-btn').addEventListener('click', () => {
+            this.clearConversation();
+        });
+        
+        document.getElementById('references-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'references-modal') {
+                this.hideReferencesModal();
+            }
+        });
+        
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('add-reference-btn')) {
+                this.addReference(e.target);
+            }
+        });
+    }
+
+    setupQuestionSuggestions() {
+        // 設置問題建議點擊事件
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('suggested-question-btn') || 
+                e.target.closest('.suggested-question-btn')) {
+                
+                const button = e.target.classList.contains('suggested-question-btn') ? 
+                              e.target : e.target.closest('.suggested-question-btn');
+                              
+                const question = button.dataset.question;
+                if (question) {
+                    this.applySuggestedQuestion(question);
+                }
+            }
+        });
+        
+        // 設置重新生成按鈕事件
+        document.addEventListener('click', (e) => {
+            if (e.target.id === 'refresh-suggestions-btn') {
+                e.preventDefault();
+                this.loadSuggestedQuestionsSync();
+            }
+        });
+    }
+
+    applySuggestedQuestion(question) {
+        // 將問題填入輸入框
+        this.chatInput.value = question;
+        this.chatInput.focus();
+        
+        // 更新按鈕狀態
+        this.updateSendButtonState();
+        
+        // 自動發送問題
+        setTimeout(() => {
+            this.sendMessage();
+        }, 100);
+    }
+
+    showConversationLoadingMessage() {
+        const conversationContainer = document.getElementById('conversation-messages');
+        const loadingMessage = document.createElement('div');
+        loadingMessage.id = 'conversation-loading';
+        loadingMessage.className = 'flex flex-col items-center justify-center py-12 text-gray-500';
+        loadingMessage.innerHTML = `
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
+            <p class="text-sm text-gray-600 mb-2">對話記錄載入中，請稍後...</p>
+            <p class="text-xs text-gray-400">正在檢查您的歷史對話</p>
+        `;
+        conversationContainer.appendChild(loadingMessage);
+    }
+
+    hideConversationLoadingMessage() {
+        const loadingMessage = document.getElementById('conversation-loading');
+        if (loadingMessage) {
+            loadingMessage.remove();
+        }
+    }
+
+    updateSuggestionsDisplay() {
+        const emptySuggestionsElement = document.getElementById('empty-chat-suggestions');
+        const conversationMessagesElement = document.getElementById('conversation-messages');
+        
+        // 檢查是否有對話記錄
+        const hasConversation = this.hasConversationHistory();
+        
+        if (hasConversation) {
+            // 有對話記錄時的顯示
+            emptySuggestionsElement.classList.add('hidden');
+            conversationMessagesElement.classList.remove('hidden');
+        } else {
+            // 沒有對話記錄時的顯示
+            emptySuggestionsElement.classList.remove('hidden');
+            conversationMessagesElement.classList.add('hidden');
+            
+            // 只有在沒有對話記錄時才載入建議問題
+            this.loadSuggestedQuestionsSync();
+        }
+    }
+
+    loadSuggestedQuestionsSync() {
+        // 包裝異步方法，避免在多處都需要async/await
+        this.loadSuggestedQuestions().catch(error => {
+            console.error('載入建議問題失敗:', error);
+        });
+    }
+
+    hasConversationHistory() {
+        // 檢查對話容器中是否有訊息
+        const conversationContainer = document.getElementById('conversation-messages');
+        return conversationContainer && conversationContainer.children.length > 0;
+        }
+
+    async loadSuggestedQuestions() {
+        const container = document.getElementById('suggestions-container');
+        
+        // 立即清空容器，避免顯示舊問題
+        container.innerHTML = '';
+        
+        // 創建並顯示載入狀態
+        const loading = document.createElement('div');
+        loading.id = 'suggestions-loading';
+        loading.className = 'flex flex-col items-center justify-center py-8 text-gray-500';
+        loading.innerHTML = `
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
+            <p class="text-sm text-gray-600 mb-2">正在生成建議問題...</p>
+            <p id="loading-timestamp" class="text-xs text-gray-400"></p>
+        `;
+        container.appendChild(loading);
+        
+        try {
+            // 更新時間戳記
+            const timestampElement = document.getElementById('loading-timestamp');
+            if (timestampElement) {
+                timestampElement.textContent = `載入時間: ${new Date().toLocaleTimeString()}`;
+            }
+            
+            // 根據當前頁面路徑決定 API 端點
+            let apiUrl = '/api/symptoms-suggestions/'; // 預設為症狀建議
+            const currentPath = window.location.pathname;
+            
+            if (currentPath.includes('/gov-data/')) {
+                apiUrl = '/api/gov-data-suggestions/';
+            } else if (currentPath.includes('/sources/')) {
+                apiUrl = '/sources/api/sources-suggestions/';
+            }
+            
+            // 發送 API 請求
+            const response = await fetch(apiUrl, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': this.getCSRFToken()
+                },
+                credentials: 'include'
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            
+            if (data.success && data.suggestions && data.suggestions.length > 0) {
+                this.renderSuggestedQuestions(data.suggestions);
+            } else {
+                this.renderNoSuggestions(data.message || '目前暫無建議問題');
+            }
+            
+        } catch (error) {
+            console.error('載入建議問題失敗:', error);
+            this.renderNoSuggestions('無法載入建議問題');
+        } finally {
+            // 隱藏載入狀態
+            const loadingElement = document.getElementById('suggestions-loading');
+            if (loadingElement) {
+                loadingElement.classList.add('hidden');
+            }
+        }
+    }
+
+    renderSuggestedQuestions(questions) {
+        const container = document.getElementById('suggestions-container');
+        
+        // 完全清空容器
+        container.innerHTML = '';
+        
+        // 重新創建載入狀態元素
+        const loadingElement = document.createElement('div');
+        loadingElement.id = 'suggestions-loading';
+        loadingElement.className = 'hidden flex flex-col items-center justify-center py-8 text-gray-500';
+        loadingElement.innerHTML = `
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
+            <p class="text-sm text-gray-600 mb-2">正在生成建議問題...</p>
+            <p id="loading-timestamp" class="text-xs text-gray-400"></p>
+        `;
+        container.appendChild(loadingElement);
+        
+        // 添加生成提示
+        const generationInfo = document.createElement('div');
+        generationInfo.className = 'text-xs text-gray-400 mb-3 text-center';
+        generationInfo.textContent = `✨ AI 動態生成於 ${new Date().toLocaleTimeString()}`;
+        container.appendChild(generationInfo);
+        
+        // 渲染建議問題
+        questions.forEach((question, index) => {
+            const button = document.createElement('button');
+            button.className = 'suggested-question-btn w-full p-3 text-left bg-white hover:bg-blue-50 border border-gray-200 hover:border-blue-300 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md';
+            button.setAttribute('data-question', question);
+            
+            const span = document.createElement('span');
+            span.className = 'text-sm font-medium text-gray-700 truncate';
+            span.textContent = question;
+            
+            button.appendChild(span);
+            container.appendChild(button);
+            
+            // 添加動畫效果
+            setTimeout(() => {
+                button.style.opacity = '0';
+                button.style.transform = 'translateY(20px)';
+                button.style.transition = 'all 0.3s ease';
+                
+                requestAnimationFrame(() => {
+                    button.style.opacity = '1';
+                    button.style.transform = 'translateY(0)';
+                });
+            }, index * 100);
+        });
+    }
+
+    renderNoSuggestions(message) {
+        const container = document.getElementById('suggestions-container');
+        
+        // 完全清空容器
+        container.innerHTML = '';
+        
+        // 重新創建載入狀態元素
+        const loadingElement = document.createElement('div');
+        loadingElement.id = 'suggestions-loading';
+        loadingElement.className = 'hidden flex flex-col items-center justify-center py-8 text-gray-500';
+        loadingElement.innerHTML = `
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
+            <p class="text-sm text-gray-600 mb-2">正在生成建議問題...</p>
+            <p id="loading-timestamp" class="text-xs text-gray-400"></p>
+        `;
+        container.appendChild(loadingElement);
+        
+        // 顯示無建議狀態
+        const noSuggestionsDiv = document.createElement('div');
+        noSuggestionsDiv.className = 'flex flex-col items-center justify-center py-8 text-gray-500';
+        
+        noSuggestionsDiv.innerHTML = `
+            <svg class="w-12 h-12 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <p class="text-sm text-gray-600 mb-2">尚無建議的問題</p>
+            <p class="text-xs text-gray-400 text-center">${message}</p>
+        `;
+        
+        container.appendChild(noSuggestionsDiv);
+        
+        // 添加淡入動畫
+        setTimeout(() => {
+            noSuggestionsDiv.style.opacity = '0';
+            noSuggestionsDiv.style.transition = 'all 0.3s ease';
+            
+            requestAnimationFrame(() => {
+                noSuggestionsDiv.style.opacity = '1';
+            });
+        }, 100);
+    }
+
+ 
+
+    addReference(button) {
+        const referenceData = {
+            id: button.dataset.id
+        };
+        
+        if (button.dataset.name && button.dataset.description && button.dataset.fileCount) {
+            // 自建資料源
+            referenceData.name = button.dataset.name;
+            referenceData.description = button.dataset.description;
+            referenceData.file_count = button.dataset.fileCount;
+            referenceData.created_at = button.dataset.createdAt;
+            referenceData.type = 'private_source';
+        } else {
+            Object.keys(button.dataset).forEach(key => {
+                referenceData[key] = button.dataset[key];
+            });
+        }
+        
+        if (this.references.has(referenceData.id)) {
+            this.showToast('此資料已在參考資料中', 'warning');
+            return;
+        }
+        
+        this.references.set(referenceData.id, referenceData);
+        this.updateReferenceCount();
+        this.saveReferencesToStorage();
+        this.showToast('已添加到參考資料', 'success');
+        
+        button.innerHTML = '<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>已添加';
+        button.classList.remove('btn-outline', 'btn-success');
+        button.classList.add('btn-success');
+        button.disabled = true;
+    }
+
+    removeReference(id) {
+        this.references.delete(id);
+        this.updateReferenceCount();
+        this.updateReferencesModal();
+        this.saveReferencesToStorage(); 
+        this.updateButtonStates(); // 使用統一的按鈕狀態更新方法
+        this.showToast('已移除參考資料', 'info');
+    }
+
+    clearAllReferences(showToast = true) {
+        this.references.clear();
+        this.saveReferencesToStorage();
+        this.updateReferenceCount();
+        this.updateReferencesModal(); 
+        this.updateButtonStates();
+        this.hideReferencesModal(); 
+        if (showToast) {
+            this.showToast('已清空所有參考資料', 'info');
+        }
+    }
+
+    updateReferenceCount() {
+        const count = this.references.size;
+        document.getElementById('reference-count').textContent = count;
+        const mobileCount = document.getElementById('reference-count-mobile');
+        if (mobileCount) {
+            mobileCount.textContent = count;
+        }
+    }
+
+    showCurrentReferencesModal() {
+        this.updateReferencesModal();
+        document.getElementById('references-modal').classList.remove('hidden');
+    }
+
+    hideReferencesModal() {
+        document.getElementById('references-modal').classList.add('hidden');
+    }
+
+    updateReferencesModal() {
+        const referencesList = document.getElementById('references-list');
+        const noReferences = document.getElementById('no-references');
+        
+        if (this.references.size === 0) {
+            noReferences.classList.remove('hidden');
+            
+            const existingItems = referencesList.querySelectorAll('.reference-item');
+            existingItems.forEach(item => item.remove());
+        } else {
+            noReferences.classList.add('hidden');
+            
+            
+            const existingItems = referencesList.querySelectorAll('.reference-item');
+            existingItems.forEach(item => item.remove());
+            
+            
+            this.references.forEach((data, id) => {
+                const referenceItem = this.createReferenceItem(data);
+                referencesList.appendChild(referenceItem);
+            });
+        }
+    }
+
+    createReferenceItem(data) {
+        const div = document.createElement('div');
+        div.className = 'reference-item card shadow-md bg-white p-4 border border-gray-200 mb-4';
+        
+        let contentHTML = '';
+        
+        
+        if (data.type === 'private_source' || (data.name && data.file_count !== undefined)) {
+            // 自建資料源
+            contentHTML = `
+                <div class="flex-1 space-y-2 text-sm text-gray-800">
+                    <div><span class="font-semibold">參考ID：</span>${data.id}</div>
+                    <div><span class="font-semibold">資料源名稱：</span>${data.name}</div>
+                    <div><span class="font-semibold">檔案數量：</span>${data.file_count} 個檔案</div>
+                    <div>
+                        <span class="font-semibold">資料源描述：</span>
+                        <span class="text-gray-600">${data.description && data.description.length > 100 ? data.description.substring(0, 100) + '...' : (data.description || '無描述')}</span>
+                    </div>
+                    ${data.created_at ? `<div><span class="font-semibold">建立時間：</span>${data.created_at}</div>` : ''}
+                    <div><span class="inline-flex items-center px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs">📁 自建資料源</span></div>
+                </div>
+            `;
+        } else {
+            
+            const fields = Object.keys(data).filter(key => key !== 'id' && data[key]);
+            contentHTML = `
+                <div class="flex-1 space-y-2 text-sm text-gray-800">
+                    ${fields.map(field => {
+                        const value = data[field];
+                        const displayValue = value.length > 100 ? value.substring(0, 100) + '...' : value;
+                        return `<div><span class="font-semibold">${field}：</span><span class="text-gray-600">${displayValue}</span></div>`;
+                    }).join('')}
+                </div>
+            `;
+        }
+        
+        div.innerHTML = `
+            <div class="flex justify-between items-start">
+                ${contentHTML}
+                <div class="ml-4 flex-shrink-0">
+                    <button class="btn btn-sm btn-outline btn-error remove-reference-btn" 
+                            data-id="${data.id}">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                        移除
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        
+        div.querySelector('.remove-reference-btn').addEventListener('click', () => {
+            this.removeReference(data.id);
+        });
+        
+        return div;
+    }
+
+    showToast(message, type = 'info') {
+        
+        const toast = document.createElement('div');
+        toast.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg text-white max-w-sm transform transition-all duration-300 translate-x-full`;
+        
+        switch (type) {
+            case 'success':
+                toast.classList.add('bg-green-500');
+                break;
+            case 'warning':
+                toast.classList.add('bg-yellow-500');
+                break;
+            case 'error':
+                toast.classList.add('bg-red-500');
+                break;
+            default:
+                toast.classList.add('bg-blue-500');
+        }
+        
+        toast.innerHTML = `
+            <div class="flex items-center">
+                <span class="flex-1">${message}</span>
+                <button class="ml-2 text-white hover:text-gray-200" onclick="this.parentElement.parentElement.remove()">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+        `;
+        
+        document.body.appendChild(toast);
+        
+        
+        setTimeout(() => {
+            toast.classList.remove('translate-x-full');
+        }, 100);
+        
+        
+        setTimeout(() => {
+            toast.classList.add('translate-x-full');
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.remove();
+                }
+            }, 300);
+        }, 3000);
+    }
+
+
+
+    setupEventListeners() {
+        this.sendButton.addEventListener('click', () => {
+            this.sendMessage();
+        });
+        
+        this.chatInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                this.sendMessage();
+            }
+        });
+        
+        this.chatInput.addEventListener('input', () => {
+            this.updateSendButtonState();
+        });
+    }
+
+    updateSendButtonState() {
+        // 如果已經超過聊天限制，則不顯示發送按鈕（因為輸入區域已被替換）
+        if (this.isOverChatLimit) {
+            return;
+        }
+        
+        const hasMessage = this.chatInput.value.trim().length > 0;
+        const shouldEnable = hasMessage; // 只要有訊息內容就可以發送，不依賴 websocket 連線狀態
+        
+        this.sendButton.disabled = !shouldEnable;
+        
+        if (shouldEnable) {
+            this.sendButton.classList.remove('opacity-50', 'cursor-not-allowed');
+            this.sendButton.classList.add('hover:bg-blue-700');
+        } else {
+            this.sendButton.classList.add('opacity-50', 'cursor-not-allowed');
+            this.sendButton.classList.remove('hover:bg-blue-700');
+        }
+    }
+
+    async sendMessage() {
+        const message = this.chatInput.value.trim();
+        if (!message) {
+            return;
+        }
+        
+        // 檢查聊天限制
+        if (this.isOverChatLimit) {
+            // 直接在前端顯示紅色警告訊息，不發送到後端
+            const limitMessage = {
+                id: 'chat_limit_' + Date.now(),
+                type: 'error',
+                sender: 'system',
+                text: `已超過本月對話次數限制 (${this.monthlyChatCount}/${this.chatLimit})，請下月再來使用。`,
+                updated_at_timestamp: Date.now() / 1000
+            };
+            
+            // 顯示用戶訊息
+            const userMessage = {
+                id: 'user_' + Date.now(),
+                type: 'user_message',
+                sender: 'user',
+                text: message,
+                updated_at_timestamp: Date.now() / 1000
+            };
+            this.handleMessage(userMessage);
+            
+            // 顯示限制警告訊息（紅底）
+            setTimeout(() => {
+                this.handleMessage(limitMessage);
+            }, 500);
+            
+            this.chatInput.value = '';
+            this.updateSendButtonState();
+            return;
+        }
+        
+        // 清空輸入框並禁用發送按鈕
+        this.chatInput.value = '';
+        this.updateSendButtonState();
+        
+        // 發送訊息到新的 API 端點
+        try {
+            await this.sendMessageToAPI(message);
+        } catch (error) {
+            console.error('發送訊息失敗:', error);
+            this.showToast('發送訊息失敗，請重試', 'error');
+        }
+        
+        // 更新對話計數（僅用於前端顯示）
+        if (!this.isUnlimited) {
+            this.monthlyChatCount++;
+            if (this.monthlyChatCount >= this.chatLimit) {
+                this.isOverChatLimit = true;
+                // 刷新頁面以更新UI狀態
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            }
+        }
+    }
+
+    async sendMessageToAPI(message) {
+        this.showConnectionStatus('正在處理您的訊息...');
+        
+        try {
+            // 獲取用戶 session ID
+            const sessionId = await this.getUserSessionId();
+            
+            const referenceIdList = Array.from(this.references.keys()).map(id => parseInt(id));
+            const dataType = this.detectCurrentDataType();
+            
+            // 發送訊息到 API
+            const response = await fetch(`/conversations/api/conversations/session/${sessionId}/messages/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': this.getCSRFToken()
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    message: message,
+                    reference_id_list: referenceIdList,
+                    data_type: dataType
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // 更新對話顯示
+                this.updateConversationDisplay(data.messages);
+                
+                // 如果需要輪詢，開始智能輪詢
+                if (data.should_poll) {
+                    this.startPolling(sessionId);
+                }
+            } else {
+                throw new Error(data.error || '發送訊息失敗');
+            }
+            
+        } catch (error) {
+            this.hideConnectionStatus();
+            throw error;
+        }
+    }
+    
+    async getUserSessionId() {
+        // 從 API 獲取真實的 session ID
+        try {
+            const response = await fetch('/conversations/api/conversation/session/', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': this.getCSRFToken()
+                },
+                credentials: 'include'
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                return data.session_id;
+            } else {
+                throw new Error(data.error || '獲取 Session 失敗');
+            }
+            
+        } catch (error) {
+            console.error('獲取 session ID 失敗:', error);
+            throw error; // 重新拋出錯誤，而不是返回預設值
+        }
+    }
+    
+    startPolling(sessionId) {
+        // 停止任何現有的輪詢
+        this.stopPolling();
+        
+        console.log('開始智能輪詢...');
+        this.showConnectionStatus('正在等待回覆...');
+        
+        // 設置輪詢間隔（2秒）
+        this.pollingInterval = setInterval(() => {
+            this.pollConversationStatus(sessionId);
+        }, 2000);
+        
+        // 設置最大輪詢時間（5分鐘）
+        this.pollingTimeout = setTimeout(() => {
+            this.stopPolling();
+            this.hideConnectionStatus();
+            this.showToast('等待回覆超時', 'warning');
+        }, 300000); // 5分鐘
+    }
+    
+    stopPolling() {
+        if (this.pollingInterval) {
+            clearInterval(this.pollingInterval);
+            this.pollingInterval = null;
+        }
+        
+        if (this.pollingTimeout) {
+            clearTimeout(this.pollingTimeout);
+            this.pollingTimeout = null;
+        }
+        
+        console.log('停止輪詢');
+    }
+    
+    async pollConversationStatus(sessionId) {
+        try {
+            const response = await fetch(`/conversations/api/conversations/session/${sessionId}/messages/?status_only=true`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': this.getCSRFToken()
+                },
+                credentials: 'include'
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            
+            if (data.should_poll) {
+                // 更新對話顯示
+                this.updateConversationDisplay(data.messages);
+                this.showConnectionStatus(`正在處理中... (${data.pending_count} 個待處理)`);
+            } else {
+                // 在停止輪詢前，先更新最終的對話顯示
+                if (data.messages) {
+                    this.updateConversationDisplay(data.messages);
+                }
+                
+                // 停止輪詢，AI 回覆完成
+                this.stopPolling();
+                this.hideConnectionStatus();
+                console.log('AI 回覆完成，停止輪詢');
+            }
+            
+        } catch (error) {
+            console.error('輪詢狀態檢查失敗:', error);
+            // 遇到錯誤時不立即停止輪詢，允許重試
+        }
+    }
+    
+    updateConversationDisplay(messages) {
+        const conversationContainer = document.getElementById('conversation-messages');
+        
+        // 確保對話容器可見
+        const emptySuggestionsElement = document.getElementById('empty-chat-suggestions');
+        emptySuggestionsElement.classList.add('hidden');
+        conversationContainer.classList.remove('hidden');
+        
+        // 清空現有內容
+        conversationContainer.innerHTML = '';
+        
+        // 添加所有訊息
+        messages.forEach(message => {
+            const messageElement = this.createMessageElement(message);
+            conversationContainer.appendChild(messageElement);
+        });
+        
+        // 滾動到底部
+        this.scrollToBottom();
+    }
+
+
+
+    removeTemporaryMessage(tempId) {
+        const conversationContainer = document.getElementById('conversation-messages');
+        const tempMessage = conversationContainer.querySelector(`[data-message-id="${tempId}"]`);
+        if (tempMessage) {
+            tempMessage.remove();
+        }
+    }
+
+    getCurrentTimestamp() {
+        const now = new Date();
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+        return `${hours}:${minutes}:${seconds}`;
+    }
+
+    handleMessage(data) {
+        // 處理系統訊息（不顯示在對話中）
+        if (data.type === 'system') {
+            console.log('系統訊息:', data.message);
+            return;
+        }
+        
+        if (data.type === 'conversation_cleared') {
+            const conversationContainer = document.getElementById('conversation-messages');
+            conversationContainer.innerHTML = '';
+            this.updateSuggestionsDisplay();
+            return;
+        } else if (data.type === 'error') {
+            this.showToast(data.message, 'error');
+            return;
+        }
+        
+        // 確保對話容器可見（但不重新載入建議問題）
+        const emptySuggestionsElement = document.getElementById('empty-chat-suggestions');
+        const conversationMessagesElement = document.getElementById('conversation-messages');
+        emptySuggestionsElement.classList.add('hidden');
+        conversationMessagesElement.classList.remove('hidden');
+        
+        const conversationContainer = document.getElementById('conversation-messages');
+        
+        // 特殊處理用戶訊息：如果收到真實的用戶訊息，替換臨時訊息
+        if (data.type === 'user_message' || data.sender === 'user') {
+            this.handleRealUserMessage(data, conversationContainer);
+            return;
+        }
+        
+        const existingMessage = conversationContainer.querySelector(`[data-message-id="${data.id}"]`);
+        
+        if (existingMessage) {
+            // 更新現有訊息
+            const newMessageElement = this.createMessageElement(data);
+            existingMessage.replaceWith(newMessageElement);
+            
+            // 重新排序訊息
+            this.reorderMessages();
+        } else {
+            // 添加新訊息
+            const messageElement = this.createMessageElement(data);
+            conversationContainer.appendChild(messageElement);
+        }
+        
+        this.scrollToBottom();
+    }
+
+    handleRealUserMessage(data, conversationContainer) {
+        // 尋找並移除臨時用戶訊息
+        const tempMessages = conversationContainer.querySelectorAll('[data-message-id^="temp_user_"]');
+        const lastTempMessage = tempMessages[tempMessages.length - 1]; // 取最後一個臨時訊息
+        
+        if (lastTempMessage) {
+            // 替換臨時訊息
+            const realMessageElement = this.createMessageElement(data);
+            lastTempMessage.replaceWith(realMessageElement);
+            console.log('已將臨時用戶訊息替換為真實訊息');
+        } else {
+            // 如果沒有找到臨時訊息，直接添加（fallback）
+            const messageElement = this.createMessageElement(data);
+            conversationContainer.appendChild(messageElement);
+        }
+        
+        this.scrollToBottom();
+    }
+
+    reorderMessages() {
+        
+        const conversationContainer = document.getElementById('conversation-messages');
+        const messages = Array.from(conversationContainer.children);
+        
+        
+        messages.sort((a, b) => {
+            const timestampA = parseFloat(a.getAttribute('data-updated-timestamp') || '0');
+            const timestampB = parseFloat(b.getAttribute('data-updated-timestamp') || '0');
+            
+            return timestampA - timestampB;
+        });
+        
+        
+        conversationContainer.innerHTML = '';
+        messages.forEach(message => {
+            conversationContainer.appendChild(message);
+        });
+    }
+
+    createMessageElement(data) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'mb-4';
+        messageDiv.setAttribute('data-message-id', data.id);
+        messageDiv.setAttribute('data-updated-timestamp', data.updated_at_timestamp || '0');
+        
+        // 如果是臨時訊息，添加特殊樣式
+        if (data.is_temporary) {
+            messageDiv.classList.add('opacity-75', 'animate-pulse');
+        }
+        
+        let messageClass, iconColor, bgColor, textColor, alignment, icon, messageType;
+        
+        
+        if (data.sender) {
+            messageType = data.sender === 'user' ? 'user_message' : 
+                         data.sender === 'ai' ? 'ai_message' : 
+                         data.sender === 'tool' ? 'tool_message' : data.type;
+        } else {
+            messageType = data.type;
+        }
+        
+        switch (messageType) {
+            case 'user_message':
+            case 'user':
+                alignment = 'justify-end';
+                messageClass = 'max-w-2xl';
+                iconColor = 'bg-blue-500';
+                bgColor = 'bg-white border border-gray-200';
+                textColor = 'text-gray-800';
+                icon = '👤';
+                break;
+            case 'ai_message':
+            case 'ai':
+                alignment = 'justify-start';
+                messageClass = 'max-w-4xl';
+                iconColor = 'bg-green-500';
+                bgColor = 'bg-white border border-gray-200';
+                textColor = 'text-gray-800';
+                icon = '🤖';
+                break;
+            case 'tool_message':
+            case 'tool':
+                alignment = 'justify-start';
+                messageClass = 'max-w-2xl';
+                iconColor = 'bg-purple-500';
+                bgColor = 'bg-purple-50 border border-purple-200';
+                textColor = 'text-purple-800';
+                icon = '🔧';
+                break;
+
+            case 'error':
+                alignment = 'justify-center';
+                messageClass = 'max-w-2xl';
+                iconColor = 'bg-red-500';
+                bgColor = 'bg-red-50 border border-red-200';
+                textColor = 'text-red-700';
+                icon = '❌';
+                break;
+            default:
+                alignment = 'justify-start';
+                messageClass = 'max-w-2xl';
+                iconColor = 'bg-gray-500';
+                bgColor = 'bg-gray-100';
+                textColor = 'text-gray-700';
+                icon = '💬';
+        }
+        
+        
+        let messageContent = '';
+        const displayText = data.text || data.message || '';
+        
+        if (messageType === 'tool_message' || messageType === 'tool') {
+            
+            const toolName = data.tool_name || '未知工具';
+            const messageId = data.id || Math.random().toString(36).substr(2, 9);
+            const hasResult = displayText && displayText.trim() !== '';
+            
+            messageContent = `<div class="text-sm">
+                <div class="font-semibold text-purple-700 mb-2">🔧 工具調用：${toolName}</div>
+                ${hasResult ? `<div><button class="btn btn-sm btn-outline text-purple-600 border-purple-300 hover:bg-purple-50 hover:border-purple-400 show-tool-result-btn" data-message-id="${messageId}">📄 顯示結果</button></div>` : '<div class="text-purple-600">執行中...</div>'}
+            </div>`;
+        } else {
+            
+            let toolButton = '';
+            if (messageType === 'ai_message' || messageType === 'ai') {
+                // AI 回答總是顯示複製按鈕
+                let copyButton = `<button class="btn btn-sm btn-outline text-blue-600 border-blue-300 hover:bg-blue-50 hover:border-blue-400 copy-ai-message-btn flex items-center" 
+                                        data-message-text="${this.escapeHtml(displayText)}"
+                                        title="複製 AI 回答內容">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                    </svg>
+                                    複製回答
+                                </button>`;
+                
+                if (data.has_tool_calls && data.tool_calls_count > 0) {
+                    toolButton = `<div class="mt-2 flex justify-start gap-1 flex-wrap">
+                        ${copyButton}
+                        <button class="btn btn-sm btn-outline text-green-600 border-green-300 hover:bg-green-50 hover:border-green-400 show-tool-calls-btn flex items-center" data-message-id="${data.id}">
+                            🔧 工具調用 (${data.tool_calls_count})
+                        </button>
+                    </div>`;
+                } else {
+                    // 沒有工具調用時只顯示複製按鈕
+                    toolButton = `<div class="mt-2 flex justify-start gap-1 flex-wrap">
+                        ${copyButton}
+                    </div>`;
+                }
+            }
+            
+            messageContent = `<div class="text-sm whitespace-pre-wrap">${this.formatMessage(displayText)}</div>${toolButton}`;
+        }
+
+        
+        let avatarOrder = '';
+        let contentOrder = '';
+        let spaceDirection = 'space-x-2';
+        
+        if (messageType === 'user_message' || messageType === 'user') {
+            
+            avatarOrder = 'order-2';
+            contentOrder = 'order-1';
+            spaceDirection = 'space-x-reverse space-x-2';
+        } else {
+            
+            avatarOrder = 'order-1';
+            contentOrder = 'order-2';
+            spaceDirection = 'space-x-2';
+        }
+
+        messageDiv.innerHTML = `<div class="flex ${alignment}"><div class="${messageClass}"><div class="flex items-start ${spaceDirection}"><div class="w-8 h-8 ${iconColor} rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0 ${avatarOrder}">${icon}</div><div class="flex-1 ${contentOrder}"><div class="${bgColor} ${textColor} p-3 rounded-lg shadow-sm">${messageContent}</div><div class="text-xs text-gray-500 mt-1 px-1">${data.timestamp}</div></div></div></div></div>`;
+        
+        
+        const showResultBtn = messageDiv.querySelector('.show-tool-result-btn');
+        if (showResultBtn && displayText) {
+            
+            showResultBtn._toolResult = displayText;
+            showResultBtn.addEventListener('click', (e) => {
+                this.showToolResult(e.target);
+            });
+        }
+
+        
+        const showToolCallsBtn = messageDiv.querySelector('.show-tool-calls-btn');
+        if (showToolCallsBtn) {
+            showToolCallsBtn.addEventListener('click', (e) => {
+                const messageId = e.target.getAttribute('data-message-id');
+                this.showToolCalls(messageId);
+            });
+        }
+
+        // AI 回答複製按鈕事件
+        const copyAiMessageBtn = messageDiv.querySelector('.copy-ai-message-btn');
+        if (copyAiMessageBtn) {
+            copyAiMessageBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                const messageText = e.target.getAttribute('data-message-text');
+                await this.copyToClipboard(messageText, e.target);
+            });
+        }
+
+                
+        
+        return messageDiv;
+    }
+
+    formatMessage(message) {
+        if (!message) return '';
+        
+        // 使用佔位符保護 Markdown 連結和引用標記
+        const linkPlaceholders = [];
+        const citationPlaceholders = [];
+        let formatted = message;
+        
+        // 先處理引用標記 [1], [2], [3] 等，用佔位符替換
+        formatted = formatted.replace(/\[(\d+)\]/g, (match, number) => {
+            const placeholder = `__CITATION_PLACEHOLDER_${citationPlaceholders.length}__`;
+            citationPlaceholders.push(`<sup class="citation-mark text-xs bg-blue-100 text-blue-700 px-1 py-0.5 rounded">[${number}]</sup>`);
+            return placeholder;
+        });
+        
+        // 先處理 Markdown 格式的連結 [text](url)，用佔位符替換
+        formatted = formatted.replace(/\[([^\]]+)\]\((https?:\/\/[^\s\)]+)\)/g, (match, text, url) => {
+            const placeholder = `__LINK_PLACEHOLDER_${linkPlaceholders.length}__`;
+            linkPlaceholders.push(`<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 underline">${text}</a>`);
+            return placeholder;
+        });
+        
+        // 處理純 URL（簡化處理，只處理明顯的獨立 URL）
+        formatted = formatted.replace(/(^|\s)(https?:\/\/[^\s<>]+)/g, (match, prefix, url) => {
+            const placeholder = `__LINK_PLACEHOLDER_${linkPlaceholders.length}__`;
+            linkPlaceholders.push(`<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 underline">${url}</a>`);
+            return prefix + placeholder;
+        });
+        
+        // 轉義 HTML
+        formatted = this.escapeHtml(formatted);
+        
+        // 處理其他 Markdown 格式
+        formatted = formatted
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/`(.*?)`/g, '<code class="bg-gray-200 px-1 rounded text-xs">$1</code>')
+            .replace(/\n/g, '<br>');
+        
+        // 恢復引用標記佔位符
+        citationPlaceholders.forEach((citation, index) => {
+            formatted = formatted.replace(`__CITATION_PLACEHOLDER_${index}__`, citation);
+        });
+        
+        // 恢復連結佔位符
+        linkPlaceholders.forEach((link, index) => {
+            formatted = formatted.replace(`__LINK_PLACEHOLDER_${index}__`, link);
+        });
+        
+        return formatted;
+    }
+
+
+
+    escapeHtml(text) {
+        if (!text) return '';
+        
+        
+        return text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#x27;')
+            .replace(/\//g, '&#x2F;');
+    }
+
+    showToolResult(button) {
+        const toolResult = button._toolResult;
+        if (!toolResult) return;
+
+        
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
+        
+        
+        const modalContent = document.createElement('div');
+        modalContent.className = 'bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] flex flex-col';
+        
+        
+        const header = document.createElement('div');
+        header.className = 'flex items-center justify-between p-6 border-b';
+        header.innerHTML = `
+            <h3 class="text-lg font-semibold text-gray-900">🔧 工具執行結果</h3>
+            <div class="flex items-center space-x-2">
+                <button class="copy-result-btn btn btn-sm btn-outline btn-primary"
+                        title="複製結果內容">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                    </svg>
+                    複製內容
+                </button>
+                <button class="text-gray-400 hover:text-gray-600 close-tool-result-btn">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+                        </div>
+        `;
+        
+        
+        const body = document.createElement('div');
+        body.className = 'flex-1 p-6 overflow-y-auto';
+        
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'whitespace-pre-wrap text-sm text-gray-800 bg-gray-50 p-4 rounded-lg';
+        
+        contentDiv.textContent = toolResult;
+        body.appendChild(contentDiv);
+        
+        
+        const footer = document.createElement('div');
+        footer.className = 'flex justify-end p-6 border-t bg-gray-50';
+        footer.innerHTML = '<button class="btn btn-primary close-tool-result-btn">關閉</button>';
+        
+        modalContent.appendChild(header);
+        modalContent.appendChild(body);
+        modalContent.appendChild(footer);
+        modal.appendChild(modalContent);
+
+        
+        const closeButtons = modal.querySelectorAll('.close-tool-result-btn');
+        closeButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                modal.remove();
+            });
+        });
+
+        // 複製結果按鈕事件
+        const copyResultBtn = modal.querySelector('.copy-result-btn');
+        if (copyResultBtn) {
+            copyResultBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                await this.copyToClipboard(toolResult, copyResultBtn);
+            });
+        }
+
+        
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
+
+        
+        const handleEsc = (e) => {
+            if (e.key === 'Escape') {
+                modal.remove();
+                document.removeEventListener('keydown', handleEsc);
+            }
+        };
+        document.addEventListener('keydown', handleEsc);
+
+        document.body.appendChild(modal);
+    }
+
+    async showToolCalls(messageId) {
+        try {
+            // 獲取工具調用資訊
+            const response = await fetch(`/conversations/api/messages/${messageId}/tool-calls/`);
+            if (!response.ok) {
+                throw new Error('無法獲取工具調用資訊');
+            }
+            
+            const toolCalls = await response.json();
+            
+            // 創建模態框
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
+            
+            const modalContent = document.createElement('div');
+            modalContent.className = 'bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] flex flex-col';
+            
+            // 標題
+            const header = document.createElement('div');
+            header.className = 'flex items-center justify-between p-6 border-b';
+            header.innerHTML = `
+                <h3 class="text-lg font-semibold text-gray-900">🔧 工具調用過程 (${toolCalls.length} 個)</h3>
+                <button class="text-gray-400 hover:text-gray-600 close-tool-calls-btn">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            `;
+            
+            // 內容
+            const body = document.createElement('div');
+            body.className = 'flex-1 p-6 overflow-y-auto space-y-4';
+            
+            toolCalls.forEach((toolCall, index) => {
+                const toolDiv = document.createElement('div');
+                toolDiv.className = 'border border-gray-200 rounded-lg p-4 bg-gray-50';
+                
+                toolDiv.innerHTML = `
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="font-semibold text-gray-800">步驟 ${index + 1}: ${toolCall.tool_name}</h4>
+                        <span class="text-xs text-gray-500">${toolCall.timestamp}</span>
+                    </div>
+                    
+                    <!-- 電腦版左右布局，手機版上下布局 -->
+                    <div class="flex flex-col md:flex-row gap-4">
+                        <!-- 輸入參數 -->
+                        <div class="flex-1">
+                            <div class="flex items-center justify-between mb-2">
+                                <h5 class="text-sm font-medium text-gray-700">📥 輸入參數:</h5>
+                                <button class="copy-btn btn btn-xs btn-outline btn-primary" 
+                                        data-copy-text="${this.escapeHtml(this.formatJson(toolCall.tool_keywords))}"
+                                        title="複製輸入參數">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                    </svg>
+                                    複製
+                                </button>
+                            </div>
+                            <div class="bg-blue-50 p-3 rounded border text-sm h-48 md:h-64 overflow-y-auto">
+                                <pre class="whitespace-pre-wrap text-blue-800">${this.formatJson(toolCall.tool_keywords)}</pre>
+                            </div>
+                        </div>
+                        
+                        <!-- 執行結果 -->
+                        <div class="flex-1">
+                            <div class="flex items-center justify-between mb-2">
+                                <h5 class="text-sm font-medium text-gray-700">📤 執行結果:</h5>
+                                <button class="copy-btn btn btn-xs btn-outline btn-success"
+                                        data-copy-text="${this.escapeHtml(toolCall.text || '無結果')}"
+                                        title="複製執行結果">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                    </svg>
+                                    複製
+                                </button>
+                            </div>
+                            <div class="bg-green-50 p-3 rounded border text-sm h-48 md:h-64 overflow-y-auto">
+                                <pre class="whitespace-pre-wrap text-green-800">${this.escapeHtml(toolCall.text || '無結果')}</pre>
+                            </div>
+                        </div>
+                    </div>
+                `;
+        
+                body.appendChild(toolDiv);
+            });
+            
+            // 底部
+            const footer = document.createElement('div');
+            footer.className = 'flex justify-end p-6 border-t bg-gray-50';
+            footer.innerHTML = '<button class="btn btn-primary close-tool-calls-btn">關閉</button>';
+            
+            modalContent.appendChild(header);
+            modalContent.appendChild(body);
+            modalContent.appendChild(footer);
+            modal.appendChild(modalContent);
+
+            // 關閉事件
+            const closeButtons = modal.querySelectorAll('.close-tool-calls-btn');
+            closeButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    modal.remove();
+                });
+            });
+
+            // 複製按鈕事件
+            const copyButtons = modal.querySelectorAll('.copy-btn');
+            copyButtons.forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    const textToCopy = btn.getAttribute('data-copy-text');
+                    await this.copyToClipboard(textToCopy, btn);
+                });
+            });
+
+            // 點擊背景關閉
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+
+            document.body.appendChild(modal);
+            
+        } catch (error) {
+            console.error('獲取工具調用資訊失敗:', error);
+            this.showToast('無法獲取工具調用資訊', 'error');
+        }
+    }
+
+    formatJson(obj) {
+        if (typeof obj === 'string') {
+            try {
+                obj = JSON.parse(obj);
+            } catch (e) {
+                return obj;
+            }
+        }
+        return JSON.stringify(obj, null, 2);
+    }
+
+    async copyToClipboard(text, button) {
+        try {
+            // 使用現代的 Clipboard API
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(text);
+            } else {
+                // 備用方案：使用傳統的 document.execCommand
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.style.position = 'absolute';
+                textArea.style.left = '-9999px';
+                textArea.style.top = '-9999px';
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+            }
+
+            // 更新按鈕狀態
+            const originalContent = button.innerHTML;
+            button.innerHTML = `
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                已複製
+            `;
+            button.classList.remove('btn-outline');
+            button.classList.add('btn-active');
+
+            // 2秒後恢復原始狀態
+            setTimeout(() => {
+                button.innerHTML = originalContent;
+                button.classList.add('btn-outline');
+                button.classList.remove('btn-active');
+            }, 2000);
+
+            this.showToast('內容已複製到剪貼簿', 'success');
+        } catch (err) {
+            console.error('複製失敗:', err);
+            this.showToast('複製失敗，請手動選取內容', 'error');
+        }
+    }
+
+    getCSRFToken() {
+        // 首先嘗試從 input 元素獲取 CSRF token
+        const csrfTokenInput = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (csrfTokenInput) {
+            return csrfTokenInput.value;
+        }
+        
+        // 如果沒有找到 input 元素，嘗試從 meta tag 獲取
+        const csrfTokenMeta = document.querySelector('meta[name=csrf-token]');
+        if (csrfTokenMeta) {
+            return csrfTokenMeta.getAttribute('content');
+        }
+        
+        return '';
+    }
+
+    /**
+     * 統一的fetch請求包裝器，自動處理條款檢查錯誤
+     */
+    async safeFetch(url, options = {}) {
+        try {
+            const response = await fetch(url, options);
+            
+            // 檢查是否為條款未同意錯誤
+            if (response.status === 403) {
+                const data = await response.json().catch(() => null);
+                if (data && data.error === 'terms_not_agreed') {
+                    this.handleTermsNotAgreed(data.message);
+                    throw new Error('TERMS_NOT_AGREED');
+                }
+            }
+            
+            return response;
+        } catch (error) {
+            if (error.message === 'TERMS_NOT_AGREED') {
+                throw error;
+            }
+            throw error;
+        }
+    }
+
+    /**
+     * 處理條款未同意的情況
+     */
+    handleTermsNotAgreed(message = '您必須先同意使用條款才能使用此功能') {
+        // 顯示錯誤訊息
+        this.showToast(message, 'warning');
+        
+        // 強制彈出條款同意對話框
+        if (typeof openTermsModal === 'function') {
+            setTimeout(() => {
+                openTermsModal(true);
+            }, 1000);
+        } else {
+            // 如果條款模態框函數不可用，重新載入頁面
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        }
+    }
+
+    scrollToBottom() {
+        this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+    }
+
+    showConnectionStatus(message) {
+        if (this.connectionStatus) {
+            const span = this.connectionStatus.querySelector('span');
+            if (span) {
+                span.textContent = message;
+            }
+            this.connectionStatus.classList.remove('hidden');
+        }
+    }
+
+    hideConnectionStatus() {
+        if (this.connectionStatus) {
+            this.connectionStatus.classList.add('hidden');
+        }
+    }
+
+    loadReferencesFromStorage() {
+        try {
+            const savedReferences = localStorage.getItem('source_references');
+            if (savedReferences) {
+                const referencesData = JSON.parse(savedReferences);
+                this.references.clear();
+                
+                
+                Object.entries(referencesData).forEach(([id, data]) => {
+                    this.references.set(id, data);
+                });
+                
+                this.updateReferenceCount();
+            }
+        } catch (error) {
+            console.error('載入參考資料時發生錯誤:', error);
+            localStorage.removeItem('source_references');
+        }
+    }
+
+    saveReferencesToStorage() {
+        try {
+            const referencesData = Object.fromEntries(this.references);
+            localStorage.setItem('source_references', JSON.stringify(referencesData));
+        } catch (error) {
+            console.error('保存參考資料時發生錯誤:', error);
+        }
+    }
+
+    detectCurrentDataType() {
+        
+        const currentPath = window.location.pathname;
+        
+        if (currentPath.includes('/sources/')) {
+            return 'Source';
+        } else {
+            return 'Mixed'; 
+        }
+    }
+
+    updateButtonStates() {
+        
+        document.querySelectorAll('.add-reference-btn').forEach(button => {
+            const id = button.dataset.id;
+            if (this.references.has(id)) {
+                button.innerHTML = '<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>已添加';
+                button.classList.remove('btn-outline', 'btn-success');
+                button.classList.add('btn-success');
+                button.disabled = true;
+            } else {
+                button.innerHTML = '<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>加入對話';
+                button.classList.remove('btn-success');
+                button.classList.add('btn-outline', 'btn-success');
+                button.disabled = false;
+            }
+        });
+    }
+
+    async loadConversationHistory() {
+        const conversationContainer = document.getElementById('conversation-messages');
+        
+        // 顯示載入狀態
+        this.showConversationLoadingMessage();
+        
+        try {
+            // 確保有 sessionId
+            if (!this.sessionId) {
+                this.sessionId = await this.getUserSessionId();
+            }
+            
+            // 使用一般模式（不分頁）載入最近的對話記錄
+            const response = await fetch(`/conversations/api/conversations/session/${this.sessionId}/messages/`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': this.getCSRFToken()
+                },
+                credentials: 'include'
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            
+            // 清除載入動畫
+            this.hideConversationLoadingMessage();
+            
+            if (data.messages && data.messages.length > 0) {
+                // 載入對話記錄
+                data.messages.forEach(message => {
+                    const messageElement = this.createMessageElement(message);
+                    conversationContainer.appendChild(messageElement);
+                });
+                
+                // 滾動到底部
+                this.scrollToBottom();
+            }
+            
+        } catch (error) {
+            console.error('載入對話記錄失敗:', error);
+            this.hideConversationLoadingMessage();
+            this.showToast('載入對話記錄失敗', 'error');
+        }
+    }
+    
+
+
+    async clearConversation() {
+        
+        if (!confirm('確定要清空所有對話記錄嗎？此操作不可恢復。')) {
+            return;
+        }
+
+        try {
+            this.showConnectionStatus('正在清空對話記錄...');
+            
+            // 確保有 sessionId
+            if (!this.sessionId) {
+                this.sessionId = await this.getUserSessionId();
+            }
+            
+            // 使用 DELETE 方法清空對話
+            const response = await fetch(`/conversations/api/conversations/session/${this.sessionId}/messages/`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': this.getCSRFToken()
+                },
+                credentials: 'include'
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // 清空前端對話顯示
+                const conversationContainer = document.getElementById('conversation-messages');
+                conversationContainer.innerHTML = '';
+                this.updateSuggestionsDisplay();
+                
+                this.showToast('對話記錄已清空', 'success');
+            } else {
+                throw new Error(data.error || '清空對話失敗');
+            }
+            
+            this.hideConnectionStatus();
+            
+        } catch (error) {
+            console.error('清空對話失敗:', error);
+            this.hideConnectionStatus();
+            this.showToast('清空對話失敗，請重試', 'error');
+        }
+    }
+
+
+
+    setupNavigationListener() {
+        
+        document.addEventListener('click', (event) => {
+            const link = event.target.closest('a');
+            if (link && (
+                link.href.includes('/sources/') ||
+                link.href.includes('/home/') ||
+                link.href.includes('/admin/') ||
+                link.classList.contains('nav-link') ||
+                link.getAttribute('href')?.startsWith('/')
+            )) {
+                
+                const currentPath = window.location.pathname;
+                const newPath = new URL(link.href, window.location.origin).pathname;
+                
+                const currentSource = this.getDataSource(currentPath);
+                const newSource = this.getDataSource(newPath);
+                
+                
+                if (currentPath !== newPath && this.references.size > 0) {
+                    
+                    if (currentSource === newSource && 
+                        (link.href.includes('page=') || link.classList.contains('pagination-link'))) {
+                        return;
+                    }
+                    
+                    
+                    event.preventDefault();
+                    
+                    
+                    if (currentSource !== newSource) {
+                        const confirmed = confirm(`您目前有 ${this.references.size} 筆參考資料，切換資料源將會清空所有參考資料。確定要繼續嗎？`);
+                        if (!confirmed) {
+                            return;
+                        }
+                    }
+                    
+                    
+                    this.clearAllReferences(false);
+                    
+                    if (currentSource !== newSource) {
+                        this.showToast('已切換資料源，參考資料已清空', 'info');
+                    } else {
+                        this.showToast('已切換頁面，參考資料已清空', 'info');
+                    }
+                    
+                    
+                    window.location.href = link.href;
+                }
+            }
+        });
+        
+        
+        this.setupSourceSelectListener();
+    }
+    
+    setupSourceSelectListener() {
+        
+        setTimeout(() => {
+            const sourceSelect = document.getElementById('source-select');
+            if (sourceSelect) {
+                console.log('設置資料源選單監聽器，當前參考資料數量:', this.references.size);
+                
+                
+                const newSelect = sourceSelect.cloneNode(true);
+                sourceSelect.parentNode.replaceChild(newSelect, sourceSelect);
+                
+                
+                newSelect.addEventListener('change', (event) => {
+                    console.log('資料源選單變更被觸發，新值:', event.target.value);
+                    
+                    const newUrl = event.target.value;
+                    if (!newUrl) return;
+                    
+                    const currentPath = window.location.pathname;
+                    const newPath = new URL(newUrl, window.location.origin).pathname;
+                    
+                    const currentSource = this.getDataSource(currentPath);
+                    const newSource = this.getDataSource(newPath);
+                    
+                    console.log('資料源切換:', currentSource, '->', newSource, '參考資料數量:', this.references.size);
+                    
+                    
+                    if (this.references.size > 0 && currentSource !== newSource) {
+                        const confirmed = confirm(`您目前有 ${this.references.size} 筆參考資料，切換資料源將會清空所有參考資料。確定要繼續嗎？`);
+                        if (!confirmed) {
+                            
+                            event.target.value = this.getCurrentSelectValue(currentPath);
+                            return;
+                        }
+                        
+                        
+                        this.clearAllReferences(false);
+                        this.showToast('已切換資料源，參考資料已清空', 'info');
+                    }
+                    
+                    
+                    window.location.href = newUrl;
+                });
+                
+                console.log('資料源選單監聽器設置完成');
+            } else {
+                console.log('未找到 source-select 元素');
+            }
+        }, 500); 
+    }
+    
+    getCurrentSelectValue(currentPath) {
+        if (currentPath.includes('/sources/')) return '/sources/list/';
+        return '';
+    }
+
+    getDataSource(path) {
+        if (path.includes('/sources/')) return 'sources';
+        if (path.includes('/admin/')) return 'admin';
+        if (path === '/' || path.includes('/home/')) return 'home';
+        return 'other';
+    }
+}
+
+
+document.addEventListener('DOMContentLoaded', function() {
+    window.chatManager = new ChatManager();
+    
+    
+    const observer = new MutationObserver(function(mutations) {
+        let shouldUpdate = false;
+        mutations.forEach(function(mutation) {
+            if (mutation.type === 'childList') {
+                
+                const newButtons = mutation.target.querySelectorAll('.add-reference-btn');
+                if (newButtons.length > 0) {
+                    shouldUpdate = true;
+                }
+            }
+        });
+        
+        if (shouldUpdate) {
+            
+            setTimeout(() => {
+                window.chatManager.updateButtonStates();
+            }, 100);
+        }
+    });
+    
+    
+    const targetNode = document.querySelector('.data-table') || document.body;
+    observer.observe(targetNode, {
+        childList: true,
+        subtree: true
+    });
+    
+    
+    document.addEventListener('click', function(event) {
+        const link = event.target.closest('a');
+        if (link && (link.href.includes('page=') || link.classList.contains('pagination-link'))) {
+            
+            setTimeout(() => {
+                window.chatManager.updateButtonStates();
+            }, 500); 
+        }
+    });
+    
+    
+    let currentUrl = window.location.href;
+    setInterval(() => {
+        if (window.location.href !== currentUrl) {
+            currentUrl = window.location.href;
+            setTimeout(() => {
+                window.chatManager.updateButtonStates();
+            }, 300);
+        }
+    }, 500);
+    
+    
+    window.addEventListener('load', function() {
+        setTimeout(() => {
+            window.chatManager.updateButtonStates();
+        }, 200);
+    });
+    
+    
+    window.addEventListener('popstate', function() {
+        setTimeout(() => {
+            window.chatManager.updateButtonStates();
+        }, 300);
+    });
+});
+</script> 

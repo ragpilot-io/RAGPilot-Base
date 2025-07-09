@@ -1,0 +1,138 @@
+{% extends "admin/change_list.html" %}
+{% load i18n admin_urls %}
+
+{% block content_title %}
+    <h1>個人資料管理</h1>
+    
+    <!-- 用戶數量統計卡片 -->
+    {% if user_stats %}
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid {{ user_stats.status_color }};">
+        <h2 style="margin: 0 0 15px 0; color: #333; font-size: 18px;">
+            📊 用戶數量統計
+        </h2>
+        
+        <div style="display: flex; gap: 30px; align-items: center; flex-wrap: wrap;">
+            <!-- 總用戶數 -->
+            <div style="text-align: center;">
+                <div style="font-size: 24px; font-weight: bold; color: #333; margin-bottom: 5px;">
+                    {{ user_stats.total_users }}
+                </div>
+                <div style="font-size: 14px; color: #666;">
+                    目前用戶數
+                </div>
+            </div>
+            
+            <!-- 分隔線 -->
+            <div style="height: 40px; width: 1px; background: #ddd;"></div>
+            
+            <!-- 用戶上限 -->
+            <div style="text-align: center;">
+                <div style="font-size: 24px; font-weight: bold; color: #333; margin-bottom: 5px;">
+                    {{ user_stats.max_users_limit }}
+                </div>
+                <div style="font-size: 14px; color: #666;">
+                    用戶上限
+                </div>
+            </div>
+            
+            <!-- 分隔線 -->
+            <div style="height: 40px; width: 1px; background: #ddd;"></div>
+            
+            <!-- 剩餘名額 -->
+            <div style="text-align: center;">
+                <div style="font-size: 24px; font-weight: bold; color: {{ user_stats.status_color }}; margin-bottom: 5px;">
+                    {{ user_stats.remaining_slots }}
+                </div>
+                <div style="font-size: 14px; color: #666;">
+                    剩餘名額
+                </div>
+            </div>
+            
+            <!-- 分隔線 -->
+            <div style="height: 40px; width: 1px; background: #ddd;"></div>
+            
+            <!-- 使用率 -->
+            <div style="text-align: center;">
+                <div style="font-size: 24px; font-weight: bold; color: {{ user_stats.status_color }}; margin-bottom: 5px;">
+                    {{ user_stats.usage_percentage }}%
+                </div>
+                <div style="font-size: 14px; color: #666;">
+                    使用率
+                </div>
+            </div>
+            
+            <!-- 分隔線 -->
+            <div style="height: 40px; width: 1px; background: #ddd;"></div>
+            
+            <!-- 狀態 -->
+            <div style="text-align: center;">
+                <div style="
+                    font-size: 16px; 
+                    font-weight: bold; 
+                    color: white; 
+                    background: {{ user_stats.status_color }}; 
+                    padding: 8px 16px; 
+                    border-radius: 20px;
+                    margin-bottom: 5px;
+                ">
+                    {{ user_stats.status_text }}
+                </div>
+                <div style="font-size: 14px; color: #666;">
+                    系統狀態
+                </div>
+            </div>
+        </div>
+        
+        <!-- 進度條 -->
+        <div style="margin-top: 20px;">
+            <div style="font-size: 14px; color: #666; margin-bottom: 8px;">
+                註冊進度條
+            </div>
+            <div style="
+                width: 100%; 
+                height: 12px; 
+                background: #e9ecef; 
+                border-radius: 6px; 
+                overflow: hidden;
+            ">
+                <div style="
+                    width: {{ user_stats.usage_percentage }}%; 
+                    height: 100%; 
+                    background: {{ user_stats.status_color }}; 
+                    transition: width 0.3s ease;
+                "></div>
+            </div>
+        </div>
+        
+        <!-- 警告訊息 -->
+        {% if user_stats.usage_percentage >= 90 %}
+        <div style="
+            margin-top: 15px; 
+            padding: 10px 15px; 
+            background: #fff3cd; 
+            border: 1px solid #ffeaa7; 
+            border-radius: 4px; 
+            color: #856404;
+        ">
+            <strong>⚠️ 注意：</strong>
+            {% if user_stats.usage_percentage >= 100 %}
+                系統已達用戶數量上限，新用戶將無法通過 Google 註冊。
+            {% else %}
+                系統接近用戶數量上限，建議關注註冊情況。
+            {% endif %}
+        </div>
+        {% endif %}
+        
+        <!-- 說明文字 -->
+        <div style="margin-top: 15px; font-size: 13px; color: #666; line-height: 1.4;">
+            <strong>說明：</strong> 
+            當用戶數量達到上限時，新用戶將無法通過 Google 登入進行註冊，但管理員仍可手動創建用戶帳號。
+            已有帳號的用戶連結 Google 帳號不受此限制影響。
+        </div>
+    </div>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+    {{ block.super }}
+{% endblock %} 

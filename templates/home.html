@@ -1,0 +1,1052 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block body_class %}h-screen bg-gray-100 overflow-hidden{% endblock %}
+
+<style>
+    /* 確保手機版 sidebar 底部按鈕可見 */
+    @media (max-width: 767px) {
+        #sidebar {
+            padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem) !important;
+        }
+        
+        /* 為 iOS Safari 提供額外的底部間距 */
+        @supports (-webkit-touch-callout: none) {
+            #sidebar .border-t {
+                padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 4rem) !important;
+                margin-bottom: 1rem;
+            }
+        }
+        
+        /* 確保登出按鈕完全可見 */
+        #sidebar .flex.flex-col.space-y-3 {
+            margin-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
+        }
+    }
+    
+    /* 確保內容不會超出視窗 */
+    #sidebar {
+        contain: layout style;
+    }
+    
+    /* 為手機版添加額外的底部空間 */
+    @media (max-width: 767px) {
+        #sidebar {
+            padding-bottom: calc(env(safe-area-inset-bottom, 20px) + 3rem) !important;
+        }
+        
+        /* 確保用戶操作區域有足夠的空間 */
+        #sidebar .border-t {
+            background-color: white;
+            position: relative;
+        }
+        
+        /* 為登出按鈕添加額外的邊距 */
+        #sidebar .border-t .flex.flex-col.space-y-3 > a:last-child {
+            margin-bottom: calc(env(safe-area-inset-bottom, 1rem) + 1rem) !important;
+        }
+    }
+</style>
+
+{% block content %}
+
+<!-- 隱藏的 CSRF token 表單，供 JavaScript 使用 -->
+<form style="display: none;">
+    {% csrf_token %}
+</form>
+
+<div class="flex h-full">
+    <!-- 左側側欄 -->
+    <!-- 側欄收合按鈕：垂直置中，位於側欄右緣 -->
+    <button id="sidebar-toggle" class="btn btn-sm btn-circle fixed top-1/2 left-0 transform -translate-y-1/2 -translate-x-1/2 z-50 bg-white border border-gray-300 text-gray-700 shadow">
+        ❮
+    </button>
+    <aside id="sidebar" class="w-64 md:w-64 sm:w-56 h-full bg-white shadow-md p-4 md:p-6 overflow-hidden flex flex-col transition-all duration-300 transform" style="height: 100vh; height: 100dvh; max-height: 100dvh;">
+        <div class="flex-1 overflow-y-auto" style="padding-bottom: 1rem;">
+            <a href="{% url 'home' %}" class="block mb-4 md:mb-6">
+                <img src="{% static 'sidebar_logo.png' %}" alt="數據領航員 RAGPilot" class="max-h-10 md:max-h-12 w-auto">
+            </a>
+            
+            <!-- 水平分隔線 -->
+            <div class="border-b border-gray-200 mb-4 md:mb-6"></div>
+
+            {% if request_path != '/' %}
+            <!-- 功能模式選擇區域 -->
+            <div class="mb-6">
+                <div class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4 border border-blue-100">
+                    <h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                        <span class="bg-blue-500 text-white text-xs px-2 py-1 rounded-full mr-2">模式</span>
+                        選擇你的工作方式
+                    </h3>
+                    
+                    <div class="space-y-2">
+                        <!-- 資料查詢模式 -->
+                        <button id="data-query-tab" class="w-full flex items-center p-3 rounded-lg transition-all duration-200 bg-white shadow-sm border-2 border-blue-200 hover:shadow-md group">
+                            <div class="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 mr-3 group-hover:bg-blue-200 transition-colors">
+                                <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
+                                </svg>
+                            </div>
+                            <div class="flex-1 text-left">
+                                <div class="text-sm font-medium text-gray-900">資料查詢</div>
+                                <div class="text-xs text-gray-500">瀏覽和搜尋結構化資料</div>
+                            </div>
+                            <div class="w-4 h-4 rounded-full bg-blue-500 opacity-100" id="data-query-indicator"></div>
+                        </button>
+                        
+                        <!-- 深度研究模式 -->
+                        <button id="deep-research-tab" class="w-full flex items-center p-3 rounded-lg transition-all duration-200 bg-gray-50 hover:bg-gray-100 border-2 border-gray-200 hover:border-gray-300 group">
+                            <div class="flex items-center justify-center w-8 h-8 rounded-full bg-purple-100 mr-3 group-hover:bg-purple-200 transition-colors">
+                                <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                </svg>
+                            </div>
+                            <div class="flex-1 text-left">
+                                <div class="text-sm font-medium text-gray-900">深度研究</div>
+                                <div class="text-xs text-gray-500">自定義研究及分析任務</div>
+                            </div>
+                            <div class="w-4 h-4 rounded-full bg-gray-300 opacity-0" id="deep-research-indicator"></div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 資料來源設定區域 - 兩種模式都需要 -->
+            <div class="mb-4">
+                <div class="bg-white rounded-lg border border-gray-200 p-4">
+                    <div class="flex items-center mb-3">
+                        <div class="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+                        <h4 class="text-sm font-medium text-gray-900">資料來源設定</h4>
+                    </div>
+                    <div class="space-y-2">
+                        <label for="source-select" class="block text-xs font-medium text-gray-700">選擇資料來源</label>
+                        <select id="source-select" class="select select-bordered w-full text-sm">
+                            <option value="/sources/list/" {% if '/sources/' in request_path %}selected{% endif %}>📁 自建資料源</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="mb-4">
+                {% block source-description %}{% endblock %}
+            </div>
+
+            <!-- 原始網站 -->
+            {% if request_path != '/' and '/sources/' not in request_path %}
+                <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
+                    <p class="text-sm font-semibold text-blue-800 mb-2">🌐 原始網站</p>
+                    {% if '/sources/' in request_path %}
+                        <p class="text-xs text-gray-600">您的自建資料源</p>
+                    {% endif %}
+                </div>
+            {% endif %}
+
+
+            
+            <!-- 意見箱區塊 -->
+            <div class="mt-4 p-3 bg-orange-50 border border-orange-200 rounded">
+                <p class="text-sm font-semibold text-orange-800 mb-2">💡 意見箱</p>
+                <a href="https://docs.google.com/forms/d/e/1FAIpQLSdrD5XVCZHJxkrL9kL59dELwzWIm6edug-znwHPILVrzGzw5w/viewform?usp=dialog" 
+                   target="_blank" 
+                   class="text-xs text-orange-600 hover:text-orange-800 hover:underline">
+                    提供意見與建議 ↗
+                </a>
+            </div>
+            
+            <!-- 全站公告區塊 -->
+            <div id="announcement-block" class="mt-4 p-3 bg-red-50 border border-red-200 rounded" style="display: none;">
+                <p class="text-sm font-semibold text-red-800 mb-2">
+                    <span id="announcement-icon">📢</span> 
+                    <span id="announcement-label">全站公告</span>
+                </p>
+                <a href="#" onclick="openAnnouncementModal()" id="announcement-link" class="text-xs text-red-600 hover:text-red-800 hover:underline">
+                    查看最新公告 ↗
+                </a>
+            </div>
+            
+            <!-- 管理員功能區塊 - 僅超級使用者可見 -->
+            {% if user.is_superuser %}
+            <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded">
+                <p class="text-sm font-semibold text-red-800 mb-2">⚙️ 管理員功能</p>
+                <a href="/admin/" target="_blank" class="text-xs text-red-600 hover:text-red-800 hover:underline">
+                    進入 Django Admin 後台 ↗
+                </a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- 用戶操作區域 -->
+        <div class="border-t pt-4 mt-4 flex-shrink-0" style="padding-bottom: calc(env(safe-area-inset-bottom, 1rem) + 2rem); min-height: fit-content;">
+            <!-- 統一垂直佈局 - 適用於所有設備 -->
+            <div class="flex flex-col space-y-3">
+                <!-- 用戶資訊按鈕 - 全寬度 -->
+                <a href="{% url 'profile' %}" class="flex items-center p-3 rounded-lg hover:bg-gray-100 transition-colors w-full border border-gray-200 hover:border-gray-300">
+                    <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium mr-3 flex-shrink-0" style="background-color: #3b82f6;">
+                        {{ user.username|first|upper }}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-900 truncate">{{ user.username }}</p>
+                        <p class="text-xs text-gray-500">點擊查看個人資料</p>
+                    </div>
+                    <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </a>
+                
+                <!-- 登出按鈕 - 全寬度 -->
+                <a href="{% url 'logout' %}" class="flex items-center justify-center p-3 rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors w-full border border-red-200 hover:border-red-300">
+                    <svg class="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                    </svg>
+                    <span class="font-medium">登出</span>
+                </a>
+            </div>
+        </div>
+    </aside>
+
+    <!-- 主內容區 -->
+    <main class="flex-1 p-6 h-full flex flex-col overflow-hidden">
+        {% if request_path == '/' %}
+            <!-- 首頁歡迎內容 -->
+            <div class="flex-1 flex items-center justify-center">
+                <div class="text-center">
+                    <div class="mb-8">
+                        <h1 class="text-4xl font-bold text-gray-800 mb-4">數據領航員 RAGPilot</h1>
+                        <p class="text-xl text-gray-600 mb-8">您的資料探索與分析助手</p>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-1 gap-6 max-w-md mx-auto">
+                        <a href="/sources/list/" class="block p-6 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                            <div class="text-purple-500 text-3xl mb-3">📁</div>
+                            <h3 class="text-lg font-semibold text-gray-800 mb-2">自建資料源</h3>
+                            <p class="text-gray-600 text-sm">管理與瀏覽您上傳的自建資料源</p>
+                        </a>
+                    </div>
+                    
+                    <div class="mt-8 text-sm text-gray-500">
+                        <p>選擇上方資料來源開始您的資料探索之旅</p>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <!-- 其他頁面：對話功能 + 資料區域 -->
+            <div id="main-container" class="flex h-full space-x-6">
+                <!-- 左側：對話區域 -->
+                <div id="chat-area" class="w-1/2 md:w-1/2 flex flex-col transition-all duration-300 relative z-[30]">
+                    {% block chat_widget %}
+                        {% include 'chat_widget.html' %}
+                    {% endblock %}
+                </div>
+                
+                <!-- 左側：深度研究區域 -->
+                <div id="research-area" class="w-1/2 md:w-1/2 flex flex-col transition-all duration-300 relative z-[30] hidden">
+                    {% block research_widget %}
+                        {% include 'deep_research_widget.html' %}
+                    {% endblock %}
+                </div>
+                
+                <!-- 資料區域收合按鈕：手機版專用 -->
+                <button id="data-toggle" class="btn btn-sm btn-circle fixed top-1/2 right-0 transform -translate-y-1/2 translate-x-3 z-50 bg-white border border-gray-300 text-gray-700 shadow-lg hover:shadow-xl md:hidden">
+                    ❮
+                </button>
+                
+                <!-- 右側：資料區域 -->
+                <div id="data-area" class="w-1/2 md:w-1/2 flex flex-col overflow-hidden transition-all duration-300 md:translate-x-0">
+                    <!-- 頁面標題 -->
+                    <div class="flex items-center justify-between mb-4 flex-shrink-0">
+                        <div class="text-2xl font-bold">{% block source-name %}{% endblock %}</div>
+                        <!-- 資料區域關閉按鈕：手機版專用 -->
+                        <button id="data-close" class="btn btn-sm btn-circle md:hidden text-gray-500 hover:text-gray-700">
+                            ✕
+                        </button>
+                    </div>
+
+                    <!-- 過濾器區域 -->
+                    <div class="flex-shrink-0">
+                        <!-- 過濾器收合按鈕：手機版顯示 -->
+                        <div class="md:hidden mb-4">
+                            <button id="filter-toggle" class="btn btn-sm btn-outline w-full justify-between">
+                                <span id="filter-toggle-text">顯示篩選條件</span>
+                                <svg id="filter-toggle-icon" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        
+                        <!-- 過濾器內容區域 -->
+                        <div id="filter-content" class="hidden md:block">
+                            {% block filter_section %}
+                                <div class="flex space-x-2 mb-4">
+                                    <label>
+                                        <input type="text" placeholder="過濾器" class="input input-bordered w-64"/>
+                                    </label>
+                                    <button class="btn btn-primary">搜尋</button>
+                                </div>
+                            {% endblock %}
+                        </div>
+                    </div>
+
+                    <!-- 資料表格區域 -->
+                    <div class="flex-1 min-h-0">
+                        <div id="data-container" class="bg-white rounded-lg shadow p-4 h-full flex flex-col">
+                            <div class="flex-1 min-h-0 overflow-hidden">
+                                {% block data-table %}{% endblock %}
+                            </div>
+                            
+                            <!-- 分頁區域 -->
+                            {% if is_paginated %}
+                                <div id="pagination-container" class="flex justify-center mt-4 pt-4 border-t border-gray-200">
+                                    <div class="join">
+                                        {% if page_obj.has_previous %}
+                                            <button data-page="{{ page_obj.previous_page_number }}" class="join-item btn pagination-btn" title="上一頁">&lt;</button>
+                                        {% else %}
+                                            <span class="join-item btn btn-disabled">&lt;</span>
+                                        {% endif %}
+
+                                        {% for i in page_obj.paginator.page_range|slice:":4" %}
+                                            {% if i == page_obj.number %}
+                                                <span class="join-item btn btn-active">{{ i }}</span>
+                                            {% else %}
+                                                <button data-page="{{ i }}" class="join-item btn pagination-btn">{{ i }}</button>
+                                            {% endif %}
+                                        {% endfor %}
+
+                                        {% if page_obj.has_next %}
+                                            <button data-page="{{ page_obj.next_page_number }}" class="join-item btn pagination-btn" title="下一頁">&gt;</button>
+                                        {% else %}
+                                            <span class="join-item btn btn-disabled">&gt;</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </main>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function toggleText(id, field, button) {
+        const preview = document.getElementById(field + '-preview-' + id);
+        const full = document.getElementById(field + '-full-' + id);
+
+        if (preview.style.display === 'none') {
+            preview.style.display = 'inline';
+            full.style.display = 'none';
+            button.innerText = '展開';
+        } else {
+            preview.style.display = 'none';
+            full.style.display = 'inline';
+            button.innerText = '收合';
+        }
+    }
+
+    function copyToClipboard(elementId) {
+        const element = document.getElementById(elementId);
+        const text = element.textContent || element.innerText;
+        
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(text).then(function() {
+                showCopySuccess();
+            }).catch(function(err) {
+                console.error('複製失敗: ', err);
+                fallbackCopyTextToClipboard(text);
+            });
+        } else {
+            fallbackCopyTextToClipboard(text);
+        }
+    }
+
+    function fallbackCopyTextToClipboard(text) {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.top = "0";
+        textArea.style.left = "0";
+        textArea.style.position = "fixed";
+        textArea.style.opacity = "0";
+
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+
+        try {
+            const successful = document.execCommand('copy');
+            if (successful) {
+                showCopySuccess();
+            } else {
+                showCopyError();
+            }
+        } catch (err) {
+            console.error('降級複製方案失敗: ', err);
+            showCopyError();
+        }
+
+        document.body.removeChild(textArea);
+    }
+
+    function showCopySuccess() {
+        const toast = document.createElement('div');
+        toast.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+        toast.textContent = '✅ 已複製到剪貼簿！';
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            document.body.removeChild(toast);
+        }, 3000);
+    }
+
+    function showCopyError() {
+        const toast = document.createElement('div');
+        toast.className = 'fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+        toast.textContent = '❌ 複製失敗，請手動選取複製';
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            document.body.removeChild(toast);
+        }, 3000);
+    }
+
+    const sourceSelect = document.getElementById('source-select');
+    if (sourceSelect) {
+        sourceSelect.addEventListener('change', function () {
+            if (this.value) {
+                window.location.href = this.value;
+            }
+        });
+    }
+
+    // 模式切換功能
+    const dataQueryTab = document.getElementById('data-query-tab');
+    const deepResearchTab = document.getElementById('deep-research-tab');
+    const chatArea = document.getElementById('chat-area');
+    const researchArea = document.getElementById('research-area');
+    const dataArea = document.getElementById('data-area');
+    const dataQueryIndicator = document.getElementById('data-query-indicator');
+    const deepResearchIndicator = document.getElementById('deep-research-indicator');
+    
+    function switchToDataQuery() {
+        // 更新按鈕樣式
+        dataQueryTab.className = 'w-full flex items-center p-3 rounded-lg transition-all duration-200 bg-white shadow-sm border-2 border-blue-200 hover:shadow-md group';
+        deepResearchTab.className = 'w-full flex items-center p-3 rounded-lg transition-all duration-200 bg-gray-50 hover:bg-gray-100 border-2 border-gray-200 hover:border-gray-300 group';
+        
+        // 更新指示器
+        dataQueryIndicator.className = 'w-4 h-4 rounded-full bg-blue-500 opacity-100';
+        deepResearchIndicator.className = 'w-4 h-4 rounded-full bg-gray-300 opacity-0';
+        
+        // 更新主要內容區域
+        chatArea.classList.remove('hidden');
+        researchArea.classList.add('hidden');
+        if (dataArea) dataArea.classList.remove('hidden');
+    }
+    
+    function switchToDeepResearch() {
+        // 更新按鈕樣式
+        dataQueryTab.className = 'w-full flex items-center p-3 rounded-lg transition-all duration-200 bg-gray-50 hover:bg-gray-100 border-2 border-gray-200 hover:border-gray-300 group';
+        deepResearchTab.className = 'w-full flex items-center p-3 rounded-lg transition-all duration-200 bg-white shadow-sm border-2 border-purple-200 hover:shadow-md group';
+        
+        // 更新指示器
+        dataQueryIndicator.className = 'w-4 h-4 rounded-full bg-gray-300 opacity-0';
+        deepResearchIndicator.className = 'w-4 h-4 rounded-full bg-purple-500 opacity-100';
+        
+        // 直接切換對話區塊
+        chatArea.classList.add('hidden');
+        researchArea.classList.remove('hidden');
+        if (dataArea) dataArea.classList.remove('hidden');
+    }
+    
+    if (dataQueryTab && deepResearchTab) {
+        dataQueryTab.addEventListener('click', switchToDataQuery);
+        deepResearchTab.addEventListener('click', switchToDeepResearch);
+    }
+
+    // AJAX 分頁功能
+    function loadPage(pageNumber) {
+        const currentUrl = new URL(window.location);
+        currentUrl.searchParams.set('page', pageNumber);
+        
+        // 顯示載入狀態
+        const dataContainer = document.getElementById('data-container');
+        if (dataContainer) {
+            dataContainer.style.opacity = '0.6';
+            dataContainer.style.pointerEvents = 'none';
+        }
+        
+        fetch(currentUrl.toString(), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.text())
+        .then(html => {
+            // 創建臨時 DOM 來解析回應
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html;
+            
+            // 提取新的資料表格內容
+            const newDataContainer = tempDiv.querySelector('#data-container');
+            if (newDataContainer && dataContainer) {
+                dataContainer.innerHTML = newDataContainer.innerHTML;
+                
+                // 重新綁定事件監聽器
+                bindToggleButtons();
+                bindPaginationButtons();
+                
+                // 更新 URL 但不重新載入頁面
+                window.history.pushState({}, '', currentUrl.toString());
+            }
+        })
+        .catch(error => {
+            console.error('載入頁面時發生錯誤:', error);
+            // 如果 AJAX 失敗，回退到傳統頁面載入
+            window.location.href = currentUrl.toString();
+        })
+        .finally(() => {
+            // 恢復正常狀態
+            if (dataContainer) {
+                dataContainer.style.opacity = '1';
+                dataContainer.style.pointerEvents = 'auto';
+            }
+        });
+    }
+
+    function bindToggleButtons() {
+        const buttons = document.querySelectorAll('.toggle-button');
+        buttons.forEach(function (button) {
+            button.addEventListener('click', function () {
+                const id = this.getAttribute('data-id');
+                const field = this.getAttribute('data-field');
+                toggleText(id, field, this);
+            });
+        });
+    }
+
+    function bindPaginationButtons() {
+        const paginationButtons = document.querySelectorAll('.pagination-btn');
+        paginationButtons.forEach(function (button) {
+            button.addEventListener('click', function (e) {
+                e.preventDefault();
+                const pageNumber = this.getAttribute('data-page');
+                if (pageNumber) {
+                    loadPage(pageNumber);
+                }
+            });
+        });
+    }
+
+    function bindFilterForm() {
+        const filterForm = document.getElementById('filter-form');
+        const clearBtn = document.getElementById('clear-btn');
+        
+        if (filterForm) {
+            filterForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                
+                // 獲取搜尋按鈕並添加載入狀態
+                const submitBtn = this.querySelector('button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.classList.add('loading');
+                    submitBtn.disabled = true;
+                }
+                
+                // 獲取表單數據
+                const formData = new FormData(filterForm);
+                const params = new URLSearchParams(formData);
+                
+                // 構建新的 URL
+                const currentUrl = new URL(window.location);
+                currentUrl.search = params.toString();
+                
+                // 載入過濾後的資料
+                loadFilteredData(currentUrl.toString());
+            });
+        }
+        
+        if (clearBtn) {
+            clearBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                
+                // 清除表單
+                if (filterForm) {
+                    filterForm.reset();
+                }
+                
+                // 載入未過濾的資料
+                const baseUrl = new URL(window.location);
+                baseUrl.search = '';
+                loadFilteredData(baseUrl.toString());
+            });
+        }
+    }
+
+    function loadFilteredData(url) {
+        const dataContainer = document.getElementById('data-container');
+        const filterForm = document.getElementById('filter-form');
+        const submitBtn = filterForm ? filterForm.querySelector('button[type="submit"]') : null;
+        
+        if (dataContainer) {
+            dataContainer.style.opacity = '0.6';
+            dataContainer.style.pointerEvents = 'none';
+        }
+        
+        fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.text())
+        .then(html => {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html;
+            
+            // 更新資料容器
+            const newDataContainer = tempDiv.querySelector('#data-container');
+            if (newDataContainer && dataContainer) {
+                dataContainer.innerHTML = newDataContainer.innerHTML;
+                
+                // 重新綁定事件監聽器
+                bindToggleButtons();
+                bindPaginationButtons();
+                bindFilterToggle();
+                
+                // 更新 URL
+                window.history.pushState({}, '', url);
+            }
+        })
+        .catch(error => {
+            console.error('載入過濾資料時發生錯誤:', error);
+            window.location.href = url;
+        })
+        .finally(() => {
+            // 恢復資料容器狀態
+            if (dataContainer) {
+                dataContainer.style.opacity = '1';
+                dataContainer.style.pointerEvents = 'auto';
+            }
+            
+            // 移除搜尋按鈕的載入狀態
+            if (submitBtn) {
+                submitBtn.classList.remove('loading');
+                submitBtn.disabled = false;
+            }
+        });
+    }
+
+    // 過濾器收合功能
+    function bindFilterToggle() {
+        const filterToggle = document.getElementById('filter-toggle');
+        const filterContent = document.getElementById('filter-content');
+        const filterToggleText = document.getElementById('filter-toggle-text');
+        const filterToggleIcon = document.getElementById('filter-toggle-icon');
+        
+        if (filterToggle && filterContent && filterToggleText && filterToggleIcon) {
+            // 檢查是否有任何過濾條件被設定
+            function hasActiveFilters() {
+                const filterForm = document.getElementById('filter-form');
+                if (!filterForm) return false;
+                
+                const formData = new FormData(filterForm);
+                for (const [key, value] of formData.entries()) {
+                    if (value && value.trim() !== '') {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            
+            // 初始化過濾器狀態
+            function initFilterState() {
+                if (window.innerWidth < 768) { // 手機版
+                    if (hasActiveFilters()) {
+                        // 有篩選條件時預設展開
+                        filterContent.classList.remove('hidden');
+                        filterToggleText.textContent = '隱藏篩選條件';
+                        filterToggleIcon.style.transform = 'rotate(180deg)';
+                    } else {
+                        // 沒有篩選條件時預設收合
+                        filterContent.classList.add('hidden');
+                        filterToggleText.textContent = '顯示篩選條件';
+                        filterToggleIcon.style.transform = 'rotate(0deg)';
+                    }
+                } else {
+                    // 桌面版始終顯示
+                    filterContent.classList.remove('hidden');
+                }
+            }
+            
+            // 切換過濾器顯示狀態
+            filterToggle.addEventListener('click', function() {
+                const isHidden = filterContent.classList.contains('hidden');
+                
+                if (isHidden) {
+                    // 展開過濾器
+                    filterContent.classList.remove('hidden');
+                    filterToggleText.textContent = '隱藏篩選條件';
+                    filterToggleIcon.style.transform = 'rotate(180deg)';
+                } else {
+                    // 收合過濾器
+                    filterContent.classList.add('hidden');
+                    filterToggleText.textContent = '顯示篩選條件';
+                    filterToggleIcon.style.transform = 'rotate(0deg)';
+                }
+            });
+            
+            // 監聽螢幕尺寸變化
+            window.addEventListener('resize', function() {
+                initFilterState();
+            });
+            
+            // 初始化狀態
+            initFilterState();
+        }
+    }
+
+    // 全站公告相關功能
+    let currentAnnouncement = null;
+
+    function loadLatestAnnouncement() {
+        fetch('/websites/announcement/latest/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.has_announcement) {
+                    currentAnnouncement = data.announcement;
+                    showAnnouncementBlock(data.announcement);
+                } else {
+                    hideAnnouncementBlock();
+                }
+            })
+            .catch(error => {
+                console.error('載入公告時發生錯誤:', error);
+                hideAnnouncementBlock();
+            });
+    }
+
+    function showAnnouncementBlock(announcement) {
+        const block = document.getElementById('announcement-block');
+        const label = document.getElementById('announcement-label');
+        const icon = document.getElementById('announcement-icon');
+        const link = document.getElementById('announcement-link');
+
+        if (block) {
+            // 根據重要性調整樣式
+            if (announcement.is_important) {
+                block.className = 'mt-4 p-3 bg-red-100 border-2 border-red-300 rounded animate-pulse';
+                label.textContent = '【重要】全站公告';
+                icon.textContent = '🚨';
+            } else {
+                block.className = 'mt-4 p-3 bg-red-50 border border-red-200 rounded';
+                label.textContent = '全站公告';
+                icon.textContent = '📢';
+            }
+
+            // 更新連結文字
+            if (link) {
+                link.textContent = '查看：' + announcement.title + ' ↗';
+            }
+
+            block.style.display = 'block';
+        }
+    }
+
+    function hideAnnouncementBlock() {
+        const block = document.getElementById('announcement-block');
+        if (block) {
+            block.style.display = 'none';
+        }
+    }
+
+    function openAnnouncementModal() {
+        if (!currentAnnouncement) {
+            alert('無法載入公告內容');
+            return;
+        }
+
+        // 創建模態框
+        const modal = document.createElement('div');
+        modal.id = 'announcement-modal';
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+        modal.innerHTML = `
+            <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] flex flex-col">
+                <div class="flex justify-between items-center p-6 border-b border-gray-200">
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-900">
+                            ${currentAnnouncement.is_important ? '🚨 【重要】' : '📢'} ${currentAnnouncement.title}
+                        </h2>
+                        <p class="text-sm text-gray-600 mt-1">
+                            發布者：${currentAnnouncement.created_by} • 
+                            發布時間：${new Date(currentAnnouncement.created_at).toLocaleString('zh-TW')}
+                        </p>
+                    </div>
+                    <button onclick="closeAnnouncementModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="p-6 overflow-y-auto flex-1">
+                    <div id="announcement-content" class="prose max-w-none">
+                        ${marked ? marked.parse(currentAnnouncement.content) : currentAnnouncement.content.replace(/\n/g, '<br>')}
+                    </div>
+                </div>
+                
+                <div class="flex justify-end p-6 border-t border-gray-200">
+                    <button onclick="closeAnnouncementModal()" class="btn btn-primary">
+                        關閉
+                    </button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // 點擊背景關閉模態框
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeAnnouncementModal();
+            }
+        });
+
+        // ESC 鍵關閉模態框
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeAnnouncementModal();
+            }
+        });
+    }
+
+    function closeAnnouncementModal() {
+        const modal = document.getElementById('announcement-modal');
+        if (modal) {
+            modal.remove();
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        bindToggleButtons();
+        bindPaginationButtons();
+        bindFilterForm();
+        bindFilterToggle(); // 綁定過濾器收合功能
+        loadLatestAnnouncement(); // 載入最新公告
+        // 創建 sidebar 背景遮罩
+        function createSidebarOverlay() {
+            // 避免重複創建
+            if (document.getElementById('sidebar-overlay')) return;
+            
+            const overlay = document.createElement('div');
+            overlay.id = 'sidebar-overlay';
+            overlay.className = 'fixed inset-0 bg-black bg-opacity-50 z-40';
+            overlay.style.display = 'none';
+            
+            overlay.addEventListener('click', function() {
+                // 點擊遮罩關閉 sidebar
+                const sidebar = document.getElementById('sidebar');
+                const sidebarToggle = document.getElementById('sidebar-toggle');
+                if (sidebar && sidebarToggle) {
+                    sidebar.classList.add('absolute', '-translate-x-full');
+                    sidebar.classList.remove('fixed', 'inset-0');
+                    sidebarToggle.textContent = '❯';
+                    sidebarToggle.style.left = '0.5rem';
+                    removeSidebarOverlay();
+                }
+            });
+            
+            document.body.appendChild(overlay);
+            // 延遲顯示以確保 DOM 更新
+            setTimeout(() => {
+                overlay.style.display = 'block';
+            }, 10);
+        }
+        
+        function removeSidebarOverlay() {
+            const overlay = document.getElementById('sidebar-overlay');
+            if (overlay) {
+                overlay.remove();
+            }
+        }
+
+        // 側欄收合功能
+        const sidebarToggle = document.getElementById('sidebar-toggle');
+        const sidebar = document.getElementById('sidebar');
+        if (sidebarToggle && sidebar) {
+            // 初始化 sidebar 狀態
+            function initSidebarState() {
+                if (window.innerWidth < 768) { // 手機版
+                    // 手機版預設收合
+                    sidebar.classList.add('absolute', '-translate-x-full');
+                    sidebar.style.zIndex = '50'; // 確保在最上層
+                    sidebarToggle.textContent = '❯';
+                    sidebarToggle.style.left = '0.5rem';
+                    // 確保手機版的高度正確
+                    sidebar.style.height = '100vh';
+                    sidebar.style.maxHeight = '100vh';
+                } else {
+                    // 桌面版預設展開
+                    sidebar.classList.remove('absolute', '-translate-x-full');
+                    sidebar.style.zIndex = ''; // 重置 z-index
+                    sidebarToggle.textContent = '❮';
+                    sidebarToggle.style.left = sidebar.offsetWidth + 'px';
+                    // 桌面版重置高度樣式
+                    sidebar.style.height = '';
+                    sidebar.style.maxHeight = '';
+                }
+            }
+            
+            // 初始化狀態
+            initSidebarState();
+            
+            // 監聽視窗大小變化
+            window.addEventListener('resize', function() {
+                // 清理可能存在的手機版特殊樣式
+                if (window.innerWidth >= 768) {
+                    sidebar.classList.remove('fixed');
+                    sidebar.style.zIndex = '';
+                    sidebar.style.top = '';
+                    sidebar.style.left = '';
+                    sidebar.style.height = '';
+                    removeSidebarOverlay(); // 移除遮罩
+                }
+                initSidebarState();
+                // 當切換到桌面版時，確保按鈕顯示正確
+                if (window.innerWidth >= 768) {
+                    sidebarToggle.style.display = 'block';
+                }
+            });
+
+            sidebarToggle.addEventListener('click', function () {
+                const isCollapsed = sidebar.classList.contains('absolute');
+
+                if (isCollapsed) {
+                    // 展開側欄
+                    sidebar.classList.remove('absolute', '-translate-x-full');
+                    if (window.innerWidth < 768) {
+                        // 手機版：使用固定定位但保持原來的寬度
+                        sidebar.style.zIndex = '50';
+                        sidebar.classList.add('fixed');
+                        sidebar.style.top = '0';
+                        sidebar.style.left = '0';
+                        sidebar.style.height = '100vh';
+                        sidebar.style.height = '100dvh';
+                        // 創建背景遮罩
+                        createSidebarOverlay();
+                        
+                        // 確保底部內容可見
+                        const userArea = sidebar.querySelector('.border-t');
+                        if (userArea) {
+                            userArea.style.paddingBottom = 'calc(env(safe-area-inset-bottom, 1rem) + 3rem)';
+                        }
+                    }
+                    this.textContent = '❮';
+                    this.style.left = sidebar.offsetWidth + 'px';
+                } else {
+                    // 收合側欄：設為絕對定位並移出視口，讓主內容自動撐滿
+                    sidebar.classList.add('absolute', '-translate-x-full');
+                    if (window.innerWidth < 768) {
+                        // 手機版：移除固定定位
+                        sidebar.classList.remove('fixed');
+                        sidebar.style.top = '';
+                        sidebar.style.left = '';
+                        sidebar.style.height = '';
+                        // 移除背景遮罩
+                        removeSidebarOverlay();
+                        
+                        // 重置底部樣式
+                        const userArea = sidebar.querySelector('.border-t');
+                        if (userArea) {
+                            userArea.style.paddingBottom = '';
+                        }
+                    }
+                    this.textContent = '❯';
+                    this.style.left = '0.5rem';
+                }
+            });
+        }
+
+        // 資料區域收合功能（手機版專用）
+        const dataToggle = document.getElementById('data-toggle');
+        const dataClose = document.getElementById('data-close');
+        const dataArea = document.getElementById('data-area');
+        const chatArea = document.getElementById('chat-area');
+        const mainContainer = document.getElementById('main-container');
+        const sidebarToggleBtn = document.getElementById('sidebar-toggle');
+        
+        if (dataToggle && dataArea && chatArea && dataClose && mainContainer && sidebarToggleBtn) {
+            // 初始狀態：在手機版時資料區域是隱藏的
+            function initDataAreaState() {
+                if (window.innerWidth < 768) { // md breakpoint
+                    // 手機版：預設隱藏資料區域
+                    dataArea.classList.add('fixed', 'inset-0', 'z-40', 'translate-x-full', 'bg-white', 'p-6');
+                    dataArea.classList.remove('w-1/2');
+                    chatArea.classList.remove('w-1/2');
+                    chatArea.classList.add('w-full');
+                    mainContainer.classList.remove('space-x-6');
+                    dataToggle.style.display = 'block';
+                } else {
+                    // 桌面版：恢復原始佈局
+                    dataArea.classList.remove('fixed', 'inset-0', 'z-40', 'translate-x-full', 'bg-white', 'p-6');
+                    dataArea.classList.add('w-1/2');
+                    chatArea.classList.add('w-1/2');
+                    chatArea.classList.remove('w-full');
+                    mainContainer.classList.add('space-x-6');
+                    dataToggle.style.display = 'none';
+                }
+            }
+
+            // 切換資料區域顯示狀態
+            function toggleDataArea() {
+                const isHidden = dataArea.classList.contains('translate-x-full');
+                
+                if (isHidden) {
+                    // 顯示資料區域：覆蓋整個螢幕
+                    dataArea.classList.remove('translate-x-full');
+                    dataArea.classList.add('translate-x-0');
+                    // 隱藏展開按鈕，因為現在可以用 X 關閉
+                    dataToggle.style.display = 'none';
+                    // 隱藏 sidebar 的展開/關閉按鈕
+                    sidebarToggleBtn.style.display = 'none';
+                } else {
+                    // 隱藏資料區域
+                    dataArea.classList.add('translate-x-full');
+                    dataArea.classList.remove('translate-x-0');
+                    // 顯示展開按鈕
+                    dataToggle.style.display = 'block';
+                    // 恢復 sidebar 的展開/關閉按鈕（只在手機版）
+                    if (window.innerWidth < 768) {
+                        sidebarToggleBtn.style.display = 'block';
+                    }
+                }
+            }
+
+            // 綁定事件監聽器
+            dataToggle.addEventListener('click', toggleDataArea);
+            dataClose.addEventListener('click', function() {
+                // 關閉資料區域
+                dataArea.classList.add('translate-x-full');
+                dataArea.classList.remove('translate-x-0');
+                // 顯示展開按鈕
+                dataToggle.style.display = 'block';
+                // 恢復 sidebar 的展開/關閉按鈕（只在手機版）
+                if (window.innerWidth < 768) {
+                    sidebarToggleBtn.style.display = 'block';
+                }
+            });
+
+            // 監聽螢幕尺寸變化
+            window.addEventListener('resize', function() {
+                initDataAreaState();
+                // 確保 sidebar 按鈕在正確的狀態
+                if (window.innerWidth >= 768) {
+                    sidebarToggleBtn.style.display = 'block';
+                }
+            });
+            
+            // 初始化狀態
+            initDataAreaState();
+        }
+    });
+</script>
+{% endblock %}

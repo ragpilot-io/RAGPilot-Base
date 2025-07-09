@@ -1,0 +1,317 @@
+<div class="bg-white rounded-lg shadow-lg p-6 h-full flex flex-col">
+    <div class="flex items-center mb-6">
+        <div class="w-10 h-10 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center mr-3">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+        </div>
+        <div>
+            <h2 class="text-lg font-semibold text-gray-900">深度研究</h2>
+            <p class="text-sm text-gray-500">自定義研究任務和分析格式</p>
+        </div>
+    </div>
+    
+    <div class="flex-1 overflow-y-auto space-y-6">
+        <!-- 研究議題 -->
+        <div class="space-y-3">
+            <label class="block text-sm font-medium text-gray-700">
+                <span class="flex items-center">
+                    <span class="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+                    研究議題
+                </span>
+            </label>
+            <textarea id="research-topic" 
+                      class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none" 
+                      rows="4" 
+                      placeholder="描述你想要深入研究的議題，例如：分析近年來台灣醫療政策的變化趨勢..."></textarea>
+        </div>
+        
+        <!-- 輸出格式 -->
+        <div class="space-y-3">
+            <label class="block text-sm font-medium text-gray-700">
+                <span class="flex items-center">
+                    <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                    輸出格式
+                </span>
+            </label>
+            <div class="grid grid-cols-2 gap-2">
+                <label class="flex items-center p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                    <input type="radio" name="output-format" value="report" class="mr-2" checked>
+                    <span class="text-sm">📄 研究報告</span>
+                </label>
+                <label class="flex items-center p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                    <input type="radio" name="output-format" value="summary" class="mr-2">
+                    <span class="text-sm">📋 摘要整理</span>
+                </label>
+                <label class="flex items-center p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                    <input type="radio" name="output-format" value="analysis" class="mr-2">
+                    <span class="text-sm">📊 數據分析</span>
+                </label>
+                <label class="flex items-center p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                    <input type="radio" name="output-format" value="comparison" class="mr-2">
+                    <span class="text-sm">⚖️ 比較分析</span>
+                </label>
+            </div>
+        </div>
+        
+        <!-- 額外工具 -->
+        <div class="space-y-3">
+            <label class="block text-sm font-medium text-gray-700">
+                <span class="flex items-center">
+                    <span class="w-2 h-2 bg-purple-500 rounded-full mr-2"></span>
+                    額外工具
+                </span>
+            </label>
+            <div class="space-y-2">
+                <label class="flex items-center p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                    <input type="checkbox" class="mr-2" name="tools" value="web-search">
+                    <span class="text-sm">🔍 網路搜尋</span>
+                </label>
+                <label class="flex items-center p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                    <input type="checkbox" class="mr-2" name="tools" value="data-viz">
+                    <span class="text-sm">📈 數據視覺化</span>
+                </label>
+                <label class="flex items-center p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                    <input type="checkbox" class="mr-2" name="tools" value="statistics">
+                    <span class="text-sm">🧮 統計分析</span>
+                </label>
+                <label class="flex items-center p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                    <input type="checkbox" class="mr-2" name="tools" value="cross-reference">
+                    <span class="text-sm">🔗 交叉引用</span>
+                </label>
+            </div>
+        </div>
+        
+        <!-- 高級設定 -->
+        <div class="space-y-3">
+            <label class="block text-sm font-medium text-gray-700">
+                <span class="flex items-center">
+                    <span class="w-2 h-2 bg-orange-500 rounded-full mr-2"></span>
+                    高級設定
+                </span>
+            </label>
+            <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-600">深度級別</span>
+                    <select id="depth-level" class="px-2 py-1 border border-gray-300 rounded text-sm">
+                        <option value="basic">基礎</option>
+                        <option value="intermediate" selected>中級</option>
+                        <option value="advanced">高級</option>
+                    </select>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-600">資料範圍</span>
+                    <select id="data-scope" class="px-2 py-1 border border-gray-300 rounded text-sm">
+                        <option value="current">當前資料源</option>
+                        <option value="all" selected>所有資料源</option>
+                        <option value="multiple">多源整合</option>
+                    </select>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-600">結果數量</span>
+                    <select id="result-count" class="px-2 py-1 border border-gray-300 rounded text-sm">
+                        <option value="10">10 項</option>
+                        <option value="25" selected>25 項</option>
+                        <option value="50">50 項</option>
+                        <option value="100">100 項</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 研究提示 -->
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div class="flex items-start">
+                <div class="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center mr-3 mt-0.5">
+                    <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h4 class="text-sm font-medium text-blue-900 mb-1">研究提示</h4>
+                    <p class="text-xs text-blue-800">
+                        • 詳細描述你的研究目標和問題<br>
+                        • 選擇適合的輸出格式和分析工具<br>
+                        • 考慮使用多源整合以獲得更全面的結果
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 操作按鈕 -->
+    <div class="flex space-x-3 mt-6">
+        <button id="execute-research" class="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 text-white py-3 px-4 rounded-lg font-medium hover:from-purple-600 hover:to-blue-600 transition-all duration-200 shadow-sm hover:shadow-md flex items-center justify-center">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
+            執行研究
+        </button>
+        <button id="save-research-config" class="px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+            💾 儲存
+        </button>
+        <button id="clear-research-form" class="px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+            🗑️ 清空
+        </button>
+    </div>
+</div>
+
+<script>
+// 深度研究相關功能
+document.addEventListener('DOMContentLoaded', function() {
+    // 儲存研究配置
+    const saveResearchConfig = document.getElementById('save-research-config');
+    if (saveResearchConfig) {
+        saveResearchConfig.addEventListener('click', function() {
+            const config = {
+                topic: document.getElementById('research-topic').value,
+                outputFormat: document.querySelector('input[name="output-format"]:checked').value,
+                tools: Array.from(document.querySelectorAll('input[name="tools"]:checked')).map(cb => cb.value),
+                depthLevel: document.getElementById('depth-level').value,
+                dataScope: document.getElementById('data-scope').value,
+                resultCount: document.getElementById('result-count').value
+            };
+            
+            // 儲存到 localStorage
+            localStorage.setItem('researchConfig', JSON.stringify(config));
+            
+            // 顯示成功提示
+            const toast = document.createElement('div');
+            toast.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+            toast.textContent = '✅ 研究配置已儲存！';
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                document.body.removeChild(toast);
+            }, 3000);
+        });
+    }
+    
+    // 載入儲存的研究配置
+    function loadResearchConfig() {
+        const savedConfig = localStorage.getItem('researchConfig');
+        if (savedConfig) {
+            try {
+                const config = JSON.parse(savedConfig);
+                
+                // 恢復各項設定
+                if (config.topic) document.getElementById('research-topic').value = config.topic;
+                if (config.outputFormat) {
+                    const formatRadio = document.querySelector(`input[name="output-format"][value="${config.outputFormat}"]`);
+                    if (formatRadio) formatRadio.checked = true;
+                }
+                if (config.tools) {
+                    config.tools.forEach(tool => {
+                        const toolCheckbox = document.querySelector(`input[name="tools"][value="${tool}"]`);
+                        if (toolCheckbox) toolCheckbox.checked = true;
+                    });
+                }
+                if (config.depthLevel) document.getElementById('depth-level').value = config.depthLevel;
+                if (config.dataScope) document.getElementById('data-scope').value = config.dataScope;
+                if (config.resultCount) document.getElementById('result-count').value = config.resultCount;
+            } catch (e) {
+                console.error('載入研究配置時發生錯誤:', e);
+            }
+        }
+    }
+    
+    // 頁面載入時恢復配置
+    loadResearchConfig();
+    
+    // 執行研究
+    const executeResearch = document.getElementById('execute-research');
+    if (executeResearch) {
+        executeResearch.addEventListener('click', function() {
+            // 這裡可以添加實際的研究邏輯
+            const config = {
+                topic: document.getElementById('research-topic').value,
+                outputFormat: document.querySelector('input[name="output-format"]:checked').value,
+                tools: Array.from(document.querySelectorAll('input[name="tools"]:checked')).map(cb => cb.value),
+                depthLevel: document.getElementById('depth-level').value,
+                dataScope: document.getElementById('data-scope').value,
+                resultCount: document.getElementById('result-count').value
+            };
+            
+            if (!config.topic.trim()) {
+                alert('請先輸入研究議題！');
+                return;
+            }
+            
+            // 這裡可以添加實際的研究邏輯
+            console.log('開始研究：', config);
+            alert('開始深度研究！（功能開發中）');
+        });
+    }
+    
+    // 清空表單
+    const clearForm = document.getElementById('clear-research-form');
+    if (clearForm) {
+        clearForm.addEventListener('click', function() {
+            if (confirm('確定要清空所有設定嗎？')) {
+                document.getElementById('research-topic').value = '';
+                document.querySelector('input[name="output-format"][value="report"]').checked = true;
+                document.querySelectorAll('input[name="tools"]').forEach(cb => cb.checked = false);
+                document.getElementById('depth-level').value = 'intermediate';
+                document.getElementById('data-scope').value = 'all';
+                document.getElementById('result-count').value = '25';
+                
+                // 清空 localStorage
+                localStorage.removeItem('researchConfig');
+                
+                // 重新初始化樣式
+                document.querySelectorAll('input[name="output-format"]').forEach(radio => {
+                    radio.closest('label').classList.remove('border-blue-300', 'bg-blue-50');
+                });
+                document.querySelector('input[name="output-format"][value="report"]').closest('label').classList.add('border-blue-300', 'bg-blue-50');
+                
+                document.querySelectorAll('input[name="tools"]').forEach(checkbox => {
+                    checkbox.closest('label').classList.remove('border-purple-300', 'bg-purple-50');
+                });
+                
+                // 顯示清空成功提示
+                const toast = document.createElement('div');
+                toast.className = 'fixed top-4 right-4 bg-orange-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+                toast.textContent = '✨ 表單已清空！';
+                document.body.appendChild(toast);
+                
+                setTimeout(() => {
+                    document.body.removeChild(toast);
+                }, 3000);
+            }
+        });
+    }
+    
+    // 輸出格式選擇的視覺效果
+    const formatRadios = document.querySelectorAll('input[name="output-format"]');
+    formatRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            // 移除所有選中樣式
+            formatRadios.forEach(r => {
+                r.closest('label').classList.remove('border-blue-300', 'bg-blue-50');
+            });
+            
+            // 添加選中樣式
+            if (this.checked) {
+                this.closest('label').classList.add('border-blue-300', 'bg-blue-50');
+            }
+        });
+        
+        // 初始化樣式
+        if (radio.checked) {
+            radio.closest('label').classList.add('border-blue-300', 'bg-blue-50');
+        }
+    });
+    
+    // 工具選擇的視覺效果
+    const toolCheckboxes = document.querySelectorAll('input[name="tools"]');
+    toolCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            if (this.checked) {
+                this.closest('label').classList.add('border-purple-300', 'bg-purple-50');
+            } else {
+                this.closest('label').classList.remove('border-purple-300', 'bg-purple-50');
+            }
+        });
+    });
+});
+</script>

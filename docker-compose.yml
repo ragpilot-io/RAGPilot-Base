@@ -1,0 +1,128 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: ankane/pgvector:latest
+    container_name: poestgres
+    environment:
+      - POSTGRES_DB=RAGPilot
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "5432:5432"
+    volumes:
+      - ${POSTGRES_VOLUME:-./postgres_data}:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d RAGPilot"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  postgres-init:
+    image: ankane/pgvector:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - PGPASSWORD=${POSTGRES_PASSWORD:-postgres}
+    command: |
+      bash -c "
+        psql -h postgres -U postgres -d RAGPilot -c 'CREATE EXTENSION IF NOT EXISTS vector;';
+        echo 'Vector extension enabled successfully';
+      "
+    restart: "no"
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - ${REDIS_VOLUME:-./redis_data}:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  celery-beat:
+    build: .
+    container_name: celery-beat
+    command: celery -A RAGPilot beat -l info
+    volumes:
+      - .:/app
+    working_dir: /app
+    depends_on:
+      - redis
+      - postgres
+    environment:
+      - REDIS_HOST=redis
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+    restart: unless-stopped
+    profiles:
+      - celery
+      - production
+
+  celery-conversation-worker:
+    build: .
+    container_name: celery-conversation-worker
+    command: celery -A RAGPilot worker -Q conversation_queue -l info -c 5
+    volumes:
+      - .:/app
+      - ${SOURCE_FILES_DIR:-./source_files}:/Volumes/RAGPilot/source-files
+    working_dir: /app
+    depends_on:
+      - redis
+      - postgres
+    environment:
+      - REDIS_HOST=redis
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+    restart: unless-stopped
+    deploy:
+      replicas: 1
+  
+  celery-extractor-worker:
+    build: .
+    container_name: celery-extractor-worker
+    command: celery -A RAGPilot worker -Q extractor_queue -l info -c 5
+    volumes:
+      - .:/app
+      - ${SOURCE_FILES_DIR:-./source_files}:/Volumes/RAGPilot/source-files
+    working_dir: /app
+    depends_on:
+      - redis
+      - postgres
+    environment:
+      - REDIS_HOST=redis
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+    restart: unless-stopped
+    deploy:
+      replicas: 1
+
+  django:
+    build: .
+    container_name: django
+    command: gunicorn RAGPilot.wsgi:application --bind 0.0.0.0:8000 --workers 3
+    expose:
+      - 8000
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - ${SOURCE_FILES_DIR:-./source_files}:/Volumes/RAGPilot/source-files
+    working_dir: /app
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+    restart: unless-stopped
+    deploy:
+      replicas: 1
+    profiles:
+      - production

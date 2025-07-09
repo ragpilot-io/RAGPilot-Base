@@ -1,0 +1,288 @@
+{% extends 'home.html' %}
+
+{% block source-name %}上傳檔案{% endblock %}
+
+{% block source-description %}
+<div class="p-3 bg-blue-50 border border-blue-200 rounded">
+    <p class="text-sm font-semibold text-blue-800 mb-2">📁 {{ source.name }}</p>
+    <p class="text-xs text-blue-600 mb-2">
+        {{ source.description }}
+    </p>
+    {% if not has_unlimited_files %}
+        <div class="text-xs text-blue-700 bg-blue-100 rounded px-2 py-1">
+            📄 檔案：{{ current_file_count }}/{{ file_limit_per_source }} 個（剩餘 {{ remaining_file_count }} 個）
+        </div>
+    {% else %}
+        <div class="text-xs text-blue-700 bg-blue-100 rounded px-2 py-1">
+            ✨ 無限制上傳檔案
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block filter_section %}
+    <!-- 導航按鈕 -->
+    <div class="flex flex-wrap gap-2 mb-4">
+        <a href="{% url 'source_list' %}" class="btn btn-ghost">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+            </svg>
+            返回列表
+        </a>
+        <a href="{% url 'source_detail' source.id %}" class="btn btn-ghost">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            查看檔案
+        </a>
+    </div>
+{% endblock %}
+
+{% block data-table %}
+    <div class="data-table h-full overflow-y-auto pr-2">
+        <!-- 顯示訊息 -->
+        {% if messages %}
+            <div class="mb-4 space-y-2">
+                {% for message in messages %}
+                    <div class="alert {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-error{% else %}alert-info{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        
+        <!-- 檔案上傳限制檢查 -->
+        {% if not can_upload_files %}
+            <div class="alert alert-error mb-6">
+                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                    <h3 class="font-bold">無法上傳更多檔案</h3>
+                    <div class="text-xs">此資料源已達到檔案數量上限（{{ file_limit_per_source }} 個）。請刪除現有檔案或聯繫管理員提升限制。</div>
+                </div>
+            </div>
+        {% else %}
+            <!-- 上傳表單 -->
+            <div class="card bg-base-100 shadow-xl">
+                <div class="card-body">
+                    <h2 class="card-title text-2xl font-bold text-gray-800 mb-6">
+                        <svg class="w-6 h-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                        </svg>
+                        上傳檔案到「{{ source.name }}」
+                    </h2>
+                    
+                    <form method="post" enctype="multipart/form-data" class="space-y-6">
+                        {% csrf_token %}
+                        
+                        <!-- 檔案選擇區域 -->
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text text-lg font-semibold">選擇檔案 <span class="text-red-500">*</span></span>
+                            </label>
+                            <input type="file" name="files" multiple 
+                                   class="file-input file-input-bordered file-input-lg w-full" 
+                                   accept=".pdf,.csv,.json,.xml"
+                                   required>
+                            <label class="label">
+                                <span class="label-text-alt text-gray-500">
+                                    支援格式：PDF、CSV、JSON、XML
+                                    {% if not has_unlimited_files %}
+                                        | 還可上傳 {{ remaining_file_count }} 個檔案
+                                    {% endif %}
+                                </span>
+                            </label>
+                        </div>
+                        
+                        <!-- 上傳說明 -->
+                        <div class="alert alert-info">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <div>
+                                <h4 class="font-bold">上傳須知：</h4>
+                                <ul class="text-sm mt-2 space-y-1">
+                                    <li>• 支援格式：PDF、CSV、JSON、XML</li>
+                                    <li>• 一次最多上傳 5 個檔案</li>
+                                    <li>• 單個檔案大小不可超過 20MB</li>
+                                    <li>• 上傳後系統會自動分析檔案內容</li>
+                                    <li>• 處理完成後即可開始與AI對話分析</li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <!-- 檔案預覽區域 -->
+                        <div id="file-preview" class="hidden">
+                            <div class="form-control">
+                                <label class="label">
+                                    <span class="label-text font-semibold">已選擇的檔案：</span>
+                                </label>
+                                <div id="file-list" class="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-2 max-h-48 overflow-y-auto">
+                                    <!-- 檔案列表將由 JavaScript 動態生成 -->
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card-actions justify-end">
+                            <a href="{% url 'source_detail' source.id %}" class="btn btn-ghost">取消</a>
+                            <button type="submit" class="btn btn-primary" id="upload-btn">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                                </svg>
+                                開始上傳
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const fileInput = document.querySelector('input[type="file"]');
+        const filePreview = document.getElementById('file-preview');
+        const fileList = document.getElementById('file-list');
+        const uploadBtn = document.getElementById('upload-btn');
+        const form = document.querySelector('form');
+        
+        // 檔案選擇變更事件
+        if (fileInput) {
+            fileInput.addEventListener('change', function(e) {
+                const files = e.target.files;
+                
+                if (files.length > 0) {
+                    displayFilePreview(files);
+                    filePreview.classList.remove('hidden');
+                } else {
+                    filePreview.classList.add('hidden');
+                }
+                
+                // 檢查一次上傳檔案數量限制（最多5個）
+                if (files.length > 5) {
+                    alert('一次最多只能上傳 5 個檔案！');
+                    fileInput.value = '';
+                    filePreview.classList.add('hidden');
+                    return;
+                }
+                
+                // 檢查總檔案數量限制
+                {% if not has_unlimited_files %}
+                const maxFiles = {{ file_limit_per_source }} - {{ current_file_count }};
+                if (files.length > maxFiles) {
+                    alert(`最多只能上傳 ${maxFiles} 個檔案！`);
+                    fileInput.value = '';
+                    filePreview.classList.add('hidden');
+                    return;
+                }
+                {% endif %}
+                
+                // 檢查檔案大小限制（每個檔案不超過20MB）
+                const maxFileSize = 20 * 1024 * 1024; // 20MB in bytes
+                for (let i = 0; i < files.length; i++) {
+                    if (files[i].size > maxFileSize) {
+                        alert(`檔案「${files[i].name}」大小超過 20MB 限制！`);
+                        fileInput.value = '';
+                        filePreview.classList.add('hidden');
+                        return;
+                    }
+                }
+            });
+        }
+        
+        // 顯示檔案預覽
+        function displayFilePreview(files) {
+            fileList.innerHTML = '';
+            
+            Array.from(files).forEach((file, index) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'flex items-center justify-between bg-white border border-gray-200 rounded p-2';
+                
+                const fileInfo = document.createElement('div');
+                fileInfo.className = 'flex items-center space-x-2';
+                
+                const fileIcon = getFileIcon(file.name);
+                const fileName = document.createElement('span');
+                fileName.className = 'text-sm font-medium';
+                fileName.textContent = file.name;
+                
+                const fileSize = document.createElement('span');
+                fileSize.className = 'text-xs text-gray-500';
+                fileSize.textContent = formatFileSize(file.size);
+                
+                fileInfo.appendChild(fileIcon);
+                fileInfo.appendChild(fileName);
+                fileInfo.appendChild(fileSize);
+                
+                fileItem.appendChild(fileInfo);
+                fileList.appendChild(fileItem);
+            });
+        }
+        
+        // 獲取檔案圖示
+        function getFileIcon(filename) {
+            const icon = document.createElement('div');
+            icon.className = 'w-6 h-6 flex items-center justify-center text-xs font-bold rounded';
+            
+            const ext = filename.split('.').pop().toLowerCase();
+            
+            switch(ext) {
+                case 'pdf':
+                    icon.className += ' bg-red-100 text-red-600';
+                    icon.textContent = 'PDF';
+                    break;
+                case 'csv':
+                    icon.className += ' bg-green-100 text-green-600';
+                    icon.textContent = 'CSV';
+                    break;
+                case 'json':
+                    icon.className += ' bg-yellow-100 text-yellow-600';
+                    icon.textContent = 'JSON';
+                    break;
+                case 'xml':
+                    icon.className += ' bg-blue-100 text-blue-600';
+                    icon.textContent = 'XML';
+                    break;
+                default:
+                    icon.className += ' bg-gray-100 text-gray-600';
+                    icon.textContent = 'FILE';
+            }
+            
+            return icon;
+        }
+        
+        // 格式化檔案大小
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        // 表單提交處理
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                const files = fileInput.files;
+                
+                if (files.length === 0) {
+                    e.preventDefault();
+                    alert('請選擇要上傳的檔案');
+                    return false;
+                }
+                
+                // 顯示載入狀態
+                uploadBtn.classList.add('loading');
+                uploadBtn.disabled = true;
+                uploadBtn.innerHTML = '<span class="loading loading-spinner"></span>上傳中...';
+            });
+        }
+    });
+</script>
+{% endblock %} 
