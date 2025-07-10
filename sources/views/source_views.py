@@ -387,7 +387,8 @@ class SourceUploadView(LoginRequiredMixin, TermsRequiredMixin, UserPlanContextMi
     @staticmethod
     def _save_file(uploaded_file, username, file_uuid, file_format):
         first_letter = username[0].lower() if username else 'u'
-        file_path = f"/Volumes/RAGPilot/{first_letter}/{username}/{file_uuid}.{file_format}"
+        # container 內的檔案路徑，於 docker-compose.yml 中另外定義 volume 路徑對應到宿主機
+        file_path = f"/Volumes/RAGPilot/source-files/{first_letter}/{username}/{file_uuid}.{file_format}"
 
         # 建立目錄
         directory = os.path.dirname(file_path)
