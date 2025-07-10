@@ -1,33 +1,17 @@
 {% extends 'home.html' %}
 
-{% block source-name %}上傳檔案{% endblock %}
+{% block source-name %}{% endblock %}
 
-{% block source-description %}
-<div class="p-3 bg-blue-50 border border-blue-200 rounded">
-    <p class="text-sm font-semibold text-blue-800 mb-2">📁 {{ source.name }}</p>
-    <p class="text-xs text-blue-600 mb-2">
-        {{ source.description }}
-    </p>
-    {% if not has_unlimited_files %}
-        <div class="text-xs text-blue-700 bg-blue-100 rounded px-2 py-1">
-            📄 檔案：{{ current_file_count }}/{{ file_limit_per_source }} 個（剩餘 {{ remaining_file_count }} 個）
-        </div>
-    {% else %}
-        <div class="text-xs text-blue-700 bg-blue-100 rounded px-2 py-1">
-            ✨ 無限制上傳檔案
-        </div>
-    {% endif %}
-</div>
-{% endblock %}
+{% block source-description %}{% endblock %}
 
 {% block filter_section %}
     <!-- 導航按鈕 -->
     <div class="flex flex-wrap gap-2 mb-4">
-        <a href="{% url 'source_list' %}" class="btn btn-ghost">
+        <a href="{% url 'home' %}" class="btn btn-ghost">
             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
             </svg>
-            返回列表
+            返回首頁
         </a>
         <a href="{% url 'source_detail' source.id %}" class="btn btn-ghost">
             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

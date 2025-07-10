@@ -2,23 +2,7 @@
 
 {% block source-name %}{% endblock %}
 
-{% block source-description %}
-<div class="p-3 bg-purple-50 border border-purple-200 rounded">
-    <p class="text-sm font-semibold text-purple-800 mb-2">📁 自建資料源</p>
-    <p class="text-xs text-purple-600 mb-2">
-        建立和管理您的私有資料庫，上傳文件並進行智慧對話。
-    </p>
-    {% if not has_unlimited_source %}
-        <div class="text-xs text-purple-700 bg-purple-100 rounded px-2 py-1">
-            📊 已建立：{{ private_source_count }}/{{ private_source_limit }} 個資料源
-        </div>
-    {% else %}
-        <div class="text-xs text-purple-700 bg-purple-100 rounded px-2 py-1">
-            ✨ 無限制建立資料源
-        </div>
-    {% endif %}
-</div>
-{% endblock %}
+{% block source-description %}{% endblock %}
 
 {% block filter_section %}
     <!-- 操作按鈕區 -->

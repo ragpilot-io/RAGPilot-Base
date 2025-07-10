@@ -2,45 +2,11 @@
 
 {% block source-name %}{% endblock %}
 
-{% block source-description %}
-<div class="p-3 bg-purple-50 border border-purple-200 rounded">
-    <p class="text-sm font-semibold text-purple-800 mb-2">📁 自建資料源</p>
-    <p class="text-xs text-purple-600 mb-2">
-        建立和管理您的私有資料庫，上傳文件並進行智慧對話。
-    </p>
-    <div class="flex flex-col space-y-1">
-        {% if not has_unlimited_source %}
-            <div class="text-xs text-purple-700 bg-purple-100 rounded px-2 py-1">
-                📊 已建立：{{ private_source_count }}/{{ private_source_limit }} 個資料源
-            </div>
-        {% else %}
-            <div class="text-xs text-purple-700 bg-purple-100 rounded px-2 py-1">
-                ✨ 無限制建立資料源
-            </div>
-        {% endif %}
-        
-        {% if not has_unlimited_files %}
-            <div class="text-xs text-blue-700 bg-blue-100 rounded px-2 py-1">
-                📄 此資料源：{{ current_file_count }}/{{ file_limit_per_source }} 個檔案
-            </div>
-        {% else %}
-            <div class="text-xs text-blue-700 bg-blue-100 rounded px-2 py-1">
-                ✨ 無限制上傳檔案
-            </div>
-        {% endif %}
-    </div>
-</div>
-{% endblock %}
+{% block source-description %}{% endblock %}
 
 {% block filter_section %}
     <!-- 操作按鈕區 -->
     <div class="flex flex-wrap gap-2 mb-4">
-        <a href="{% url 'source_list' %}" class="btn btn-ghost">
-            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-            </svg>
-            返回列表
-        </a>
         <a href="{% url 'source_upload' source.id %}" class="btn btn-primary">
             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>

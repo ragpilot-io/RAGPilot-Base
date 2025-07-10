@@ -1,33 +1,17 @@
 {% extends 'home.html' %}
 
-{% block source-name %}建立新資料源{% endblock %}
+{% block source-name %}{% endblock %}
 
-{% block source-description %}
-<div class="p-3 bg-green-50 border border-green-200 rounded">
-    <p class="text-sm font-semibold text-green-800 mb-2">🎯 建立新資料源</p>
-    <p class="text-xs text-green-600 mb-2">
-        為您的專案建立一個新的私有資料庫，可以上傳各種格式的檔案進行智慧分析。
-    </p>
-    {% if not has_unlimited_source %}
-        <div class="text-xs text-green-700 bg-green-100 rounded px-2 py-1">
-            📊 已建立：{{ private_source_count }}/{{ private_source_limit }} 個資料源
-        </div>
-    {% else %}
-        <div class="text-xs text-green-700 bg-green-100 rounded px-2 py-1">
-            ✨ 無限制建立資料源
-        </div>
-    {% endif %}
-</div>
-{% endblock %}
+{% block source-description %}{% endblock %}
 
 {% block filter_section %}
     <!-- 返回按鈕 -->
     <div class="flex flex-wrap gap-2 mb-4">
-        <a href="{% url 'source_list' %}" class="btn btn-ghost">
+        <a href="{% url 'home' %}" class="btn btn-ghost">
             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
             </svg>
-            返回列表
+            返回首頁
         </a>
     </div>
 {% endblock %}

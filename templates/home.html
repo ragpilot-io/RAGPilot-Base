@@ -110,23 +110,24 @@
                     </div>
                 </div>
             </div>
-            
-            <!-- 資料來源設定區域 - 兩種模式都需要 -->
+            {% endif %}
+
+            <!-- 資料源列表區域 -->
             <div class="mb-4">
-                <div class="bg-white rounded-lg border border-gray-200 p-4">
-                    <div class="flex items-center mb-3">
-                        <div class="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
-                        <h4 class="text-sm font-medium text-gray-900">資料來源設定</h4>
-                    </div>
-                    <div class="space-y-2">
-                        <label for="source-select" class="block text-xs font-medium text-gray-700">選擇資料來源</label>
-                        <select id="source-select" class="select select-bordered w-full text-sm">
-                            <option value="/sources/list/" {% if '/sources/' in request_path %}selected{% endif %}>📁 自建資料源</option>
-                        </select>
+                <a href="{% url 'source_create' %}" class="btn btn-primary btn-sm w-full mb-3">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    新增資料源
+                </a>
+                <div id="sidebar-sources-list" class="space-y-2 max-h-64 overflow-y-auto">
+                    <!-- 資料源列表將由 JavaScript 載入 -->
+                    <div class="text-center py-4">
+                        <div class="loading loading-spinner loading-sm"></div>
+                        <p class="text-xs text-gray-500 mt-2">載入中...</p>
                     </div>
                 </div>
             </div>
-            {% endif %}
 
             <div class="mb-4">
                 {% block source-description %}{% endblock %}
@@ -143,37 +144,6 @@
             {% endif %}
 
 
-            
-            <!-- 意見箱區塊 -->
-            <div class="mt-4 p-3 bg-orange-50 border border-orange-200 rounded">
-                <p class="text-sm font-semibold text-orange-800 mb-2">💡 意見箱</p>
-                <a href="https://docs.google.com/forms/d/e/1FAIpQLSdrD5XVCZHJxkrL9kL59dELwzWIm6edug-znwHPILVrzGzw5w/viewform?usp=dialog" 
-                   target="_blank" 
-                   class="text-xs text-orange-600 hover:text-orange-800 hover:underline">
-                    提供意見與建議 ↗
-                </a>
-            </div>
-            
-            <!-- 全站公告區塊 -->
-            <div id="announcement-block" class="mt-4 p-3 bg-red-50 border border-red-200 rounded" style="display: none;">
-                <p class="text-sm font-semibold text-red-800 mb-2">
-                    <span id="announcement-icon">📢</span> 
-                    <span id="announcement-label">全站公告</span>
-                </p>
-                <a href="#" onclick="openAnnouncementModal()" id="announcement-link" class="text-xs text-red-600 hover:text-red-800 hover:underline">
-                    查看最新公告 ↗
-                </a>
-            </div>
-            
-            <!-- 管理員功能區塊 - 僅超級使用者可見 -->
-            {% if user.is_superuser %}
-            <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded">
-                <p class="text-sm font-semibold text-red-800 mb-2">⚙️ 管理員功能</p>
-                <a href="/admin/" target="_blank" class="text-xs text-red-600 hover:text-red-800 hover:underline">
-                    進入 Django Admin 後台 ↗
-                </a>
-            </div>
-            {% endif %}
         </div>
 
         <!-- 用戶操作區域 -->
@@ -216,16 +186,8 @@
                         <p class="text-xl text-gray-600 mb-8">您的資料探索與分析助手</p>
                     </div>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-1 gap-6 max-w-md mx-auto">
-                        <a href="/sources/list/" class="block p-6 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow">
-                            <div class="text-purple-500 text-3xl mb-3">📁</div>
-                            <h3 class="text-lg font-semibold text-gray-800 mb-2">自建資料源</h3>
-                            <p class="text-gray-600 text-sm">管理與瀏覽您上傳的自建資料源</p>
-                        </a>
-                    </div>
-                    
                     <div class="mt-8 text-sm text-gray-500">
-                        <p>選擇上方資料來源開始您的資料探索之旅</p>
+                        <p>請從左側選擇資料源開始您的資料探索之旅</p>
                     </div>
                 </div>
             </div>
@@ -826,12 +788,87 @@
         }
     }
 
+    // 側邊欄資料源列表載入功能
+    function loadSidebarSources() {
+        const sidebarSourcesList = document.getElementById('sidebar-sources-list');
+        if (!sidebarSourcesList) return;
+
+        fetch('/sources/list/', {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.text())
+        .then(html => {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html;
+            
+            // 提取資料源列表內容
+            const dataTable = tempDiv.querySelector('.data-table');
+            if (dataTable) {
+                const sources = dataTable.querySelectorAll('.card');
+                let sidebarHtml = '';
+                
+                // 獲取當前頁面的資料源 ID
+                const currentPath = window.location.pathname;
+                const currentSourceId = currentPath.match(/\/sources\/(\d+)/)?.[1];
+                
+                sources.forEach(source => {
+                    const sourceLink = source.querySelector('a[href*="/sources/"]');
+                    if (sourceLink) {
+                        const href = sourceLink.getAttribute('href');
+                        const sourceId = href.match(/\/sources\/(\d+)/)?.[1];
+                        const sourceName = source.querySelector('.text-purple-700')?.textContent || '未知資料源';
+                        const fileCount = source.querySelector('.badge-primary')?.textContent || '0 個檔案';
+                        const isActive = sourceId === currentSourceId;
+                        
+                        sidebarHtml += `
+                            <a href="${href}" class="btn btn-ghost w-full justify-start py-3 h-auto min-h-[3.5rem] ${isActive ? 'btn-active bg-purple-100 text-purple-700' : 'text-left'}">
+                                <div class="flex items-center w-full">
+                                    <div class="text-purple-500 mr-3 text-lg">📁</div>
+                                    <div class="flex-1 min-w-0 text-left">
+                                        <div class="text-sm font-medium truncate leading-tight">${sourceName}</div>
+                                        <div class="text-xs opacity-60 mt-1">${fileCount}</div>
+                                    </div>
+                                    ${isActive ? '<div class="w-2 h-2 bg-purple-500 rounded-full ml-2 flex-shrink-0"></div>' : ''}
+                                </div>
+                            </a>
+                        `;
+                    }
+                });
+                
+                if (sidebarHtml) {
+                    sidebarSourcesList.innerHTML = sidebarHtml;
+                } else {
+                    sidebarSourcesList.innerHTML = `
+                        <div class="text-center py-6">
+                            <div class="text-gray-400 text-4xl mb-3">📁</div>
+                            <div class="text-sm text-gray-500 mb-4">還沒有資料源</div>
+                            <a href="/sources/create/" class="btn btn-sm btn-primary w-full">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                </svg>
+                                建立第一個資料源
+                            </a>
+                        </div>
+                    `;
+                }
+            } else {
+                sidebarSourcesList.innerHTML = '<div class="text-center py-2"><div class="text-xs text-gray-500">無法載入資料源列表</div></div>';
+            }
+        })
+        .catch(error => {
+            console.error('載入側邊欄資料源列表時發生錯誤:', error);
+            sidebarSourcesList.innerHTML = '<div class="text-center py-2"><div class="text-xs text-red-500">載入失敗</div></div>';
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         bindToggleButtons();
         bindPaginationButtons();
         bindFilterForm();
         bindFilterToggle(); // 綁定過濾器收合功能
-        loadLatestAnnouncement(); // 載入最新公告
+        loadSidebarSources(); // 載入側邊欄資料源列表
         // 創建 sidebar 背景遮罩
         function createSidebarOverlay() {
             // 避免重複創建
