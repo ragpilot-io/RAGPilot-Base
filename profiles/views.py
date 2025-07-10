@@ -12,7 +12,6 @@ from django.conf import settings
 from .forms import UserProfileForm, CustomPasswordChangeForm, CustomSetPasswordForm
 from .models import Limit, Profile
 from conversations.models import Message
-from utils.oauth_utils import is_google_oauth_enabled
 
 # Create your views here.
 
@@ -69,8 +68,6 @@ class ProfileView(TermsRequiredMixin, View):
             (private_source_count / limit.private_source_limit * 100) if limit.private_source_limit > 0 else 0
         )
         
-        # 檢查 Google OAuth 可用性
-        google_oauth_enabled = is_google_oauth_enabled()
         
         context = {
             'profile_form': profile_form,
@@ -89,7 +86,6 @@ class ProfileView(TermsRequiredMixin, View):
             'has_unlimited_chat': has_unlimited_chat,
             'has_unlimited_source': has_unlimited_source,
             'has_unlimited_files': has_unlimited_files,
-            'google_oauth_enabled': google_oauth_enabled,
         }
         return render(request, self.template_name, context)
     

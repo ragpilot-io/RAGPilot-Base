@@ -70,12 +70,6 @@
                 <button class="btn btn-outline w-full border-2 tab tab-active flex items-center justify-start" data-tab="profile">
                     <span class="flex items-center">👤 個人資料</span>
                 </button>
-                <button class="btn btn-outline w-full border-2 tab flex items-center justify-start" data-tab="password">
-                                            <span class="flex items-center">🔒 密碼管理</span>
-                </button>
-                <button class="btn btn-outline w-full border-2 tab flex items-center justify-start" data-tab="social">
-                    <span class="flex items-center">🔗 第三方登入</span>
-                </button>
                 <button class="btn btn-outline w-full border-2 tab flex items-center justify-start" data-tab="plan">
                     <span class="flex items-center">📊 使用方案</span>
                 </button>
@@ -183,11 +177,9 @@
                         </form>
                     </div>
                 </div>
-            </div>
 
-            <!-- 密碼管理 -->
-            <div id="password-content" class="tab-content" style="display: none;">
-                <div class="card bg-base-100 shadow">
+                <!-- 密碼管理 -->
+                <div class="card bg-base-100 shadow mt-8">
                     <div class="card-body">
                         {% if password_form_type == 'set' %}
                             <!-- 設定密碼（適用於 Google 登入用戶） -->
@@ -332,124 +324,7 @@
                 </div>
             </div>
 
-            <!-- 第三方登入管理 -->
-            <div id="social-content" class="tab-content" style="display: none;">
-                <div class="card bg-base-100 shadow">
-                    <div class="card-body">
-                        <h3 class="card-title text-xl flex items-center">
-                            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
-                            </svg>
-                            第三方登入管理
-                        </h3>
-                        
-                        {% if google_oauth_enabled %}
-                            <!-- Google OAuth 可用時的正常功能 -->
-                            <div class="space-y-6 mt-6">
-                                
-                                <!-- Google 連結狀態 -->
-                                {% load socialaccount %}
-                                {% get_social_accounts user as accounts %}
-                                
-                                <div class="border rounded-lg p-4">
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex items-center space-x-3">
-                                            <svg class="w-8 h-8" viewBox="0 0 24 24">
-                                                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                                                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                                                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                                                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                                            </svg>
-                                            <div>
-                                                <h4 class="font-semibold">Google</h4>
-                                                {% for account in accounts.google %}
-                                                    <p class="text-sm text-gray-600">已連結：{{ account.extra_data.email }}</p>
-                                                {% empty %}
-                                                    <p class="text-sm text-gray-600">尚未連結</p>
-                                                {% endfor %}
-                                            </div>
-                                        </div>
-                                        
-                                        <div>
-                                            {% for account in accounts.google %}
-                                                <!-- 已連結，顯示取消連結按鈕 -->
-                                                <form method="post" action="{% url 'socialaccount_connections' %}" class="inline" 
-                                                      onsubmit="return confirm('確定要取消連結 Google 帳戶嗎？')">
-                                                    {% csrf_token %}
-                                                    <input type="hidden" name="account" value="{{ account.id }}">
-                                                    <button type="submit" name="action_remove" class="btn btn-error btn-sm">
-                                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                                        </svg>
-                                                        取消連結
-                                                    </button>
-                                                </form>
-                                            {% empty %}
-                                                <!-- 未連結，顯示連結按鈕 -->
-                                                <a href="{% provider_login_url 'google' process='connect' %}" class="btn btn-primary btn-sm">
-                                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
-                                                    </svg>
-                                                    連結 Google
-                                                </a>
-                                            {% endfor %}
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="alert alert-info">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                    </svg>
-                                    <div>
-                                        <h4 class="font-bold">第三方登入說明</h4>
-                                        <p class="text-sm">連結第三方帳戶後，您可以使用多種方式登入系統。取消連結不會影響您的現有資料。</p>
-                                    </div>
-                                </div>
-                            </div>
-                        {% else %}
-                            <!-- Google OAuth 不可用時的提示 -->
-                            <div class="space-y-6 mt-6">
-                                <div class="alert alert-warning">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"/>
-                                    </svg>
-                                    <div>
-                                        <h4 class="font-bold">第三方登入功能暫不可用</h4>
-                                        <p class="text-sm">系統管理員尚未設定 Google OAuth 環境變數，因此無法啟用第三方登入功能。</p>
-                                    </div>
-                                </div>
-                                
-                                <div class="border rounded-lg p-4 bg-gray-50">
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex items-center space-x-3">
-                                            <svg class="w-8 h-8 opacity-50" viewBox="0 0 24 24">
-                                                <path fill="#9CA3AF" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                                                <path fill="#9CA3AF" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                                                <path fill="#9CA3AF" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                                                <path fill="#9CA3AF" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                                            </svg>
-                                            <div>
-                                                <h4 class="font-semibold text-gray-600">Google</h4>
-                                                <p class="text-sm text-gray-500">需要設定環境變數才能啟用</p>
-                                            </div>
-                                        </div>
-                                        
-                                        <div>
-                                            <button class="btn btn-sm btn-disabled" disabled>
-                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728"/>
-                                                </svg>
-                                                暫不可用
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
+
 
             <!-- 使用方案 -->
             <div id="plan-content" class="tab-content" style="display: none;">
