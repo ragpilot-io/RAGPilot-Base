@@ -3,7 +3,7 @@ version: "3.8"
 services:
   postgres:
     image: ankane/pgvector:latest
-    container_name: poestgres
+    container_name: ragpilot-base-poestgres
     environment:
       - POSTGRES_DB=RAGPilot
       - POSTGRES_USER=postgres
@@ -20,6 +20,7 @@ services:
 
   postgres-init:
     image: ankane/pgvector:latest
+    container_name: ragpilot-base-postgres-init
     depends_on:
       postgres:
         condition: service_healthy
@@ -34,7 +35,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: redis
+    container_name: ragpilot-base-redis
     ports:
       - "6379:6379"
     command: redis-server --appendonly yes
@@ -48,7 +49,7 @@ services:
 
   celery-beat:
     build: .
-    container_name: celery-beat
+    container_name: ragpilot-base-celery-beat
     command: celery -A RAGPilot beat -l info
     volumes:
       - .:/app
@@ -67,7 +68,7 @@ services:
 
   celery-conversation-worker:
     build: .
-    container_name: celery-conversation-worker
+    container_name: ragpilot-base-celery-conversation-worker
     command: celery -A RAGPilot worker -Q conversation_queue -l info -c 5
     volumes:
       - .:/app
@@ -86,7 +87,7 @@ services:
   
   celery-extractor-worker:
     build: .
-    container_name: celery-extractor-worker
+    container_name: ragpilot-base-celery-extractor-worker
     command: celery -A RAGPilot worker -Q extractor_queue -l info -c 5
     volumes:
       - .:/app
@@ -105,7 +106,7 @@ services:
 
   django:
     build: .
-    container_name: django
+    container_name: ragpilot-base-django
     command: gunicorn RAGPilot.wsgi:application --bind 0.0.0.0:8000 --workers 3
     expose:
       - 8000
@@ -124,5 +125,3 @@ services:
     restart: unless-stopped
     deploy:
       replicas: 1
-    profiles:
-      - production

@@ -1,0 +1,4 @@
+postgres_data/
+redis_data/
+source_files/
+.git/

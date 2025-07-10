@@ -22,8 +22,8 @@ COMBINE_PROMPT = PromptTemplate.from_template("""
 
 @app.task()
 def extract_pdf_soruce_file_content(source_file_id: int):
+    source_file = SourceFile.objects.get(id=source_file_id)
     try:
-        source_file = SourceFile.objects.get(id=source_file_id)
         source_file = utils.set_source_file_status(source_file, ProcessingStatus.PROCESSING)
     except Exception as e:
         utils.set_source_file_status(source_file, ProcessingStatus.FAILED, "找不到 SourceFile 物件。")

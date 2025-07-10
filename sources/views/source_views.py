@@ -10,7 +10,7 @@ import os
 import uuid
 
 
-class SourceListView(TermsRequiredMixin, UserPlanContextMixin, ListView):
+class SourceListView(LoginRequiredMixin, TermsRequiredMixin, UserPlanContextMixin, ListView):
     """自建資料源列表視圖"""
     model = Source
     template_name = 'sources/source_list.html'
@@ -54,7 +54,7 @@ class SourceListView(TermsRequiredMixin, UserPlanContextMixin, ListView):
         return context
 
 
-class SourceCreateView(TermsRequiredMixin, UserPlanContextMixin, TemplateView):
+class SourceCreateView(LoginRequiredMixin, TermsRequiredMixin, UserPlanContextMixin, TemplateView):
     """建立新資料源視圖"""
     template_name = 'sources/source_create.html'
     
@@ -141,7 +141,7 @@ class SourceCreateView(TermsRequiredMixin, UserPlanContextMixin, TemplateView):
         return redirect('source_detail', pk=source.id)
 
 
-class SourceDetailView(TermsRequiredMixin, UserPlanContextMixin, DetailView):
+class SourceDetailView(LoginRequiredMixin, TermsRequiredMixin, UserPlanContextMixin, DetailView):
     """資料源詳細視圖"""
     model = Source
     template_name = 'sources/source_detail.html'
@@ -203,7 +203,7 @@ class SourceDetailView(TermsRequiredMixin, UserPlanContextMixin, DetailView):
         return context
 
 
-class SourceEditView(TermsRequiredMixin, UserPlanContextMixin, TemplateView):
+class SourceEditView(LoginRequiredMixin, TermsRequiredMixin, UserPlanContextMixin, TemplateView):
     """編輯資料源視圖"""
     template_name = 'sources/source_edit.html'
     
@@ -274,7 +274,7 @@ class SourceEditView(TermsRequiredMixin, UserPlanContextMixin, TemplateView):
         return redirect('source_detail', pk=source.id)
 
 
-class SourceDeleteView(TermsRequiredMixin, UserPlanContextMixin, TemplateView):
+class SourceDeleteView(LoginRequiredMixin, TermsRequiredMixin, UserPlanContextMixin, TemplateView):
     """刪除資料源視圖"""
     template_name = 'sources/source_delete.html'
     
@@ -334,7 +334,7 @@ class SourceDeleteView(TermsRequiredMixin, UserPlanContextMixin, TemplateView):
         return redirect('home')
 
 
-class SourceUploadView(TermsRequiredMixin, UserPlanContextMixin, TemplateView):
+class SourceUploadView(LoginRequiredMixin, TermsRequiredMixin, UserPlanContextMixin, TemplateView):
     """檔案上傳視圖"""
     template_name = 'sources/source_upload.html'
     
@@ -370,9 +370,9 @@ class SourceUploadView(TermsRequiredMixin, UserPlanContextMixin, TemplateView):
         })
         
         return context
-    
-    def _get_file_format(self, filename):
-        """根據檔案名稱獲取檔案格式"""
+
+    @staticmethod
+    def _get_file_format(filename) -> str | None:
         extension = filename.lower().split('.')[-1] if '.' in filename else ''
         
         format_mapping = {
@@ -383,24 +383,12 @@ class SourceUploadView(TermsRequiredMixin, UserPlanContextMixin, TemplateView):
         }
         
         return format_mapping.get(extension, None)  # 不支援的格式返回 None
-    
-    def _save_file(self, uploaded_file, username, file_uuid, file_format):
-        """儲存檔案到指定路徑"""
-        from django.conf import settings
-        
-        # 從設定獲取指定目錄
-        base_dir = settings.SOURCE_FILES_DIR
-        
-        # 根據模型說明建立路徑：/<指定目錄>/<a~z>(username 首字小寫)/<username>/<uuid>.<format>
+
+    @staticmethod
+    def _save_file(uploaded_file, username, file_uuid, file_format):
         first_letter = username[0].lower() if username else 'u'
-        file_path = os.path.join(
-            base_dir,
-            first_letter,
-            username,
-            f"{file_uuid}.{file_format}"
-        )
-        print(file_path)
-        
+        file_path = f"/Volumes/RAGPilot/{first_letter}/{username}/{file_uuid}.{file_format}"
+
         # 建立目錄
         directory = os.path.dirname(file_path)
         os.makedirs(directory, exist_ok=True)
@@ -528,10 +516,9 @@ class SourceUploadView(TermsRequiredMixin, UserPlanContextMixin, TemplateView):
         return redirect('source_detail', pk=source.id)
 
 
-class SourceSuggestView(TermsRequiredMixin, View):
+class SourceSuggestView(LoginRequiredMixin, TermsRequiredMixin, View):
     
     def get(self, request):
-        """使用重構後的工具生成自建資料源建議問題"""
         from utils.question_suggestions import generate_source_suggestions
         
         return generate_source_suggestions(request.user)

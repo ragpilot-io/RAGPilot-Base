@@ -58,7 +58,7 @@ def extract_structured_file_content(source_file_id: int):
     if df is None or df.empty:
         utils.set_source_file_status(source_file, ProcessingStatus.COMPLETED)
         return f"檔案 {source_file.filename} 沒有可提取的結構化資料"
-    
+
     success, message = handler.save_to_database(
             df=df, 
             table_name=source_file.uuid, 
@@ -66,7 +66,7 @@ def extract_structured_file_content(source_file_id: int):
         )
     if not success:
         utils.set_source_file_status(source_file, ProcessingStatus.FAILED, message)
-        return f"儲存資料到資料庫失敗: {str(e)}"
+        return f"儲存資料到資料庫失敗: {message}"
     
     SourceFileTable.objects.create(
         user=source_file.user,

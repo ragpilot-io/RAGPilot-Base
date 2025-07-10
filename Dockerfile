@@ -27,6 +27,3 @@ COPY . .
 # 收集靜態檔案
 RUN python manage.py collectstatic --noinput
 
-# 設定環境變數
-# ENV PYTHONPATH=/app
-# ENV DJANGO_SETTINGS_MODULE=RAGPilot.settings
