@@ -11,7 +11,6 @@ from django.views.decorators.cache import never_cache
 from django.conf import settings
 from .forms import UsernameAuthenticationForm
 from .mixins import UserPlanContextMixin, TermsRequiredMixin
-from utils.oauth_utils import is_google_oauth_enabled
 
 User = get_user_model()
 
@@ -70,8 +69,7 @@ class CustomLoginView(LoginView):
                 status_message = f'目前系統用戶較多，剩餘 {remaining_slots} 個註冊名額。'
         
         # 檢查 Google OAuth 是否可用
-        google_oauth_enabled = is_google_oauth_enabled()
-        
+
         context.update({
             'user_limit_status': {
                 'show_status': show_status,
@@ -84,7 +82,6 @@ class CustomLoginView(LoginView):
                 'remaining_slots': remaining_slots,
                 'usage_percentage': round(usage_percentage, 1),
             },
-            'google_oauth_enabled': google_oauth_enabled,
         })
         
         return context

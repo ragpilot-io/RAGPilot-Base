@@ -785,26 +785,28 @@ async function loadTermsForProfile() {
 
         if (response.ok) {
             const data = await response.json();
-            if (data.success) {
+            if (data.success && data.terms_content && data.terms_content.trim()) {
                 contentMarkdown = data.terms_content;
             } else {
-                console.warn('獲取條款內容失敗:', data.message);
-                // 使用預設條款作為後備
-                contentMarkdown = (typeof getDefaultTermsContent === 'function') ? getDefaultTermsContent() : '';
+                contentMarkdown = null;
             }
         } else {
-            console.warn('條款 API 請求失敗，使用預設條款');
-            // 使用預設條款作為後備
-            contentMarkdown = (typeof getDefaultTermsContent === 'function') ? getDefaultTermsContent() : '';
+            contentMarkdown = null;
         }
 
-        // 轉 Markdown → HTML
+        // 檢查是否有條款內容
         let html = '';
-        if (typeof safeMarkdownToHtml === 'function') {
-            html = await safeMarkdownToHtml(contentMarkdown);
+        if (!contentMarkdown || contentMarkdown.trim() === '') {
+            // 沒有條款時顯示提示訊息
+            html = '<div class="text-center py-8"><div class="text-gray-500 text-lg">目前尚無條款</div></div>';
         } else {
-            // 後備：簡易換行處理
-            html = '<pre>' + contentMarkdown.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</pre>';
+            // 轉 Markdown → HTML
+            if (typeof safeMarkdownToHtml === 'function') {
+                html = await safeMarkdownToHtml(contentMarkdown);
+            } else {
+                // 後備：簡易換行處理
+                html = '<pre>' + contentMarkdown.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</pre>';
+            }
         }
 
         // 顯示內容
